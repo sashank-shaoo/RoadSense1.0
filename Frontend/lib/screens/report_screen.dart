@@ -7,6 +7,7 @@ import '../ widgets/recent_report_card.dart';
 import '../ widgets/report_header.dart';
 import '../ widgets/report_pie_chart.dart';
 import '../ widgets/report_summary_card.dart';
+import '../models/report.dart';
 import '../services/api_exception.dart';
 import '../services/report_service.dart';
 
@@ -20,6 +21,7 @@ class ReportScreen extends StatefulWidget {
 class _ReportScreenState extends State<ReportScreen> {
   String selectedFilter = 'All';
   bool _isCreatingReport = false;
+  Report? _latestReport;
 
   final ImagePicker _imagePicker = ImagePicker();
   final ReportService _reportService = ReportService();
@@ -57,6 +59,7 @@ class _ReportScreenState extends State<ReportScreen> {
       );
 
       if (!mounted) return;
+      setState(() => _latestReport = report);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -142,6 +145,11 @@ class _ReportScreenState extends State<ReportScreen> {
               CreateReportCard(
                 onTap: _isCreatingReport ? () {} : _createReport,
               ),
+
+              if (_latestReport?.imageUrl != null) ...[
+                const SizedBox(height: 18),
+                _UploadedReportImage(report: _latestReport!),
+              ],
 
               const SizedBox(height: 25),
 
@@ -236,6 +244,53 @@ class _ReportScreenState extends State<ReportScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _UploadedReportImage extends StatelessWidget {
+  final Report report;
+
+  const _UploadedReportImage({required this.report});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0B1720),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Uploaded evidence',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.network(
+              report.imageUrl!,
+              width: double.infinity,
+              height: 190,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) => const SizedBox(
+                height: 190,
+                child: Center(
+                  child: Text(
+                    'The temporary image URL has expired.',
+                    style: TextStyle(color: Colors.white60),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

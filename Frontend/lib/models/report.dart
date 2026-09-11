@@ -41,6 +41,7 @@ class ReportDetection {
 class Report {
   final String id;
   final String filename;
+  final String? imageUrl;
   final ReportLocation location;
   final String processingStatus;
   final String? status;
@@ -54,6 +55,7 @@ class Report {
   const Report({
     required this.id,
     required this.filename,
+    this.imageUrl,
     required this.location,
     required this.processingStatus,
     this.status,
@@ -70,6 +72,7 @@ class Report {
     return Report(
       id: json['id']?.toString() ?? json['report_id']?.toString() ?? '',
       filename: json['original_filename']?.toString() ?? '',
+      imageUrl: json['image_url']?.toString(),
       location: ReportLocation.fromJson(json),
       processingStatus: json['processing_status']?.toString() ?? 'PENDING',
       status: json['status']?.toString(),

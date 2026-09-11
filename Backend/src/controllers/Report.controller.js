@@ -8,7 +8,11 @@ import {
   markReportProcessing,
   replaceReportDetections,
 } from "../dao/ReportDao.js";
-import { downloadObject, uploadObject } from "../AWS/s3Service.js";
+import {
+  createDownloadUrl,
+  downloadObject,
+  uploadObject,
+} from "../AWS/s3Service.js";
 import { predictImage } from "../AWS/ec2Service.js";
 import { aiResponseSchema, reportCreateSchema } from "../zod/ReportSchema.js";
 
@@ -180,11 +184,19 @@ export const createReport = async (request, reply) => {
         userId,
         validatedAiResponse.data,
       );
+      const imageUrl = await createDownloadUrl({
+        objectKey: completedReport.s3_object_key,
+        expiresIn: 3600,
+        config: request.server.config,
+      });
 
       return reply.status(201).send({
         success: true,
         message: "Report created and processed successfully",
-        report: completedReport,
+        report: {
+          ...completedReport,
+          image_url: imageUrl,
+        },
       });
     } catch (error) {
       request.log.error(
