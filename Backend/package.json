@@ -1,0 +1,35 @@
+{
+  "name": "hackthon1.0",
+  "version": "1.0.0",
+  "description": "RodeSence Backend ",
+  "license": "ISC",
+  "author": "Sashank sahoo",
+  "type": "module",
+  "main": "Server.js",
+  "scripts": {
+    "test": "npm run lint && npm run unit-test",
+    "lint": "eslint .",
+    "unit-test": "node --test"
+  },
+  "dependencies": {
+    "@aws-sdk/client-rekognition": "^3.1121.0",
+    "@aws-sdk/client-s3": "^3.1121.0",
+    "@aws-sdk/client-sqs": "^3.1121.0",
+    "@aws-sdk/s3-request-presigner": "^3.1121.0",
+    "@fastify/cookie": "^11.1.2",
+    "@fastify/cors": "^11.3.0",
+    "@fastify/env": "^7.0.0",
+    "@fastify/formbody": "^9.0.0",
+    "@fastify/helmet": "^13.1.1",
+    "@fastify/jwt": "^10.2.2",
+    "@fastify/multipart": "^10.1.1",
+    "@fastify/rate-limit": "^11.2.0",
+    "@fastify/swagger": "^9.8.1",
+    "@fastify/swagger-ui": "^6.1.1",
+    "@fastify/websocket": "^11.3.0",
+    "argon2": "^0.45.1",
+    "fastify": "^5.12.1",
+    "postgres": "^3.4.9",
+    "zod": "^4.5.4"
+  }
+}
