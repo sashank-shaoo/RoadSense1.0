@@ -5,6 +5,8 @@ export const workerSchema = {
   fields: {
     id: { type: "UUID", primaryKey: true, default: "gen_random_uuid()" },
     name: { type: "VARCHAR(255)", required: true },
+    email: { type: "VARCHAR(255)", required: true, unique: true },
+    password_hash: { type: "VARCHAR(255)", required: true },
   },
 
   createTableQuery: `
@@ -13,6 +15,8 @@ export const workerSchema = {
     CREATE TABLE IF NOT EXISTS worker_groups (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       name VARCHAR(255) NOT NULL,
+      email VARCHAR(255) NOT NULL UNIQUE,
+      password_hash VARCHAR(255) NOT NULL,
       CONSTRAINT worker_group_name_unique UNIQUE (name)
     );
 
@@ -37,6 +41,14 @@ export const workerSchema = {
 
     CREATE INDEX IF NOT EXISTS worker_report_assignments_group_id_idx
       ON worker_report_assignments (worker_group_id);
+
+    ALTER TABLE worker_groups
+      ADD COLUMN IF NOT EXISTS email VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);
+
+    CREATE UNIQUE INDEX IF NOT EXISTS worker_groups_email_unique_idx
+      ON worker_groups (email)
+      WHERE email IS NOT NULL;
 
     DROP TRIGGER IF EXISTS worker_group_member_validation
       ON worker_group_members;

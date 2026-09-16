@@ -12,6 +12,7 @@ import reportSchema from "./models/Report.model.js";
 import workerSchema from "./models/Worker.model.js";
 import userRoutes from "./routes/User.route.js";
 import reportRoutes from "./routes/Report.route.js";
+import workerRoutes from "./routes/Worker.route.js";
 const app = Fastify({
   logger: true,
 });
@@ -90,6 +91,7 @@ await app.register(multipart, {
 // Register User Routes under /api/v1/users
 await app.register(userRoutes, { prefix: "/api/v1/users" });
 await app.register(reportRoutes, { prefix: "/api/v1/reports" });
+await app.register(workerRoutes, { prefix: "/api/v1/workers" });
 
 app.get("/health", async () => {
   return {

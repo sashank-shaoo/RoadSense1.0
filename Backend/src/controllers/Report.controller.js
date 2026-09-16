@@ -9,7 +9,7 @@ import {
   supportReport,
   getAllReports,
   getReportsByUserId,
-  getReportsByStatus,
+  getReportsByStatus as getReportsByStatusDao,
 } from "../dao/ReportDao.js";
 import {
   createDownloadUrl,
@@ -334,7 +334,7 @@ export const getReportsByStatus = async (request, reply) => {
       });
     }
 
-    const reports = await getReportsByStatus(statusResult.data);
+    const reports = await getReportsByStatusDao(statusResult.data);
     return reply.status(200).send({ success: true, reports });
   } catch (error) {
     request.log.error(error);
