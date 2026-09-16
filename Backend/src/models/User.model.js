@@ -16,6 +16,7 @@ export const userSchema = {
       default: "END_USER",
       enum: ["END_USER", "WORKER", "ADMIN", "SUPER_ADMIN"],
     },
+    credit_points: { type: "INTEGER", required: true, default: 0 },
     is_varified_email: { type: "BOOLEAN", default: false },
     varification_token: { type: "VARCHAR(255)", default: null },
     varification_token_expires_at: { type: "TIMESTAMPTZ", default: null },
@@ -36,12 +37,16 @@ export const userSchema = {
       bio TEXT,
       password_hash VARCHAR(255) NOT NULL,
       role VARCHAR(50) DEFAULT 'END_USER',
+      credit_points INTEGER NOT NULL DEFAULT 0 CHECK (credit_points >= 0),
       is_varified_email BOOLEAN DEFAULT false,
       varification_token VARCHAR(255) DEFAULT NULL,
       varification_token_expires_at TIMESTAMP WITH TIME ZONE DEFAULT NULL,
       created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
+
+    ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS credit_points INTEGER NOT NULL DEFAULT 0;
   `,
   //     deleteTableQuery: `
   //   DROP TABLE IF EXISTS users;

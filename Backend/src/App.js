@@ -7,12 +7,11 @@ import jwt from "@fastify/jwt";
 import multipart from "@fastify/multipart";
 
 import { createDatabase } from "./db/postgres.js";
+import userSchema from "./models/User.model.js";
+import reportSchema from "./models/Report.model.js";
+import workerSchema from "./models/Worker.model.js";
 import userRoutes from "./routes/User.route.js";
 import reportRoutes from "./routes/Report.route.js";
-//creating tables if not exists
-// import userSchema from "./models/User.model.js";
-// import reportSchema from "./models/Report.model.js";
-// import reportDetectionSchema from "./models/ReportDetection.model.js";
 const app = Fastify({
   logger: true,
 });
@@ -68,23 +67,10 @@ await app.register(env, {
 const sql = createDatabase(app.config);
 app.decorate("db", sql);
 await sql`SELECT 1`;
-
-app.log.info("Connected to PostgreSQL");
-
-// Initialize users table if it doesn't exist
-// await sql.unsafe(userSchema.createTableQuery);
-// app.log.info("Users table verified / created successfully");
-
-// await sql.unsafe(userSchema.deleteTableQuery);
-// app.log.info("Users table verified / deleted successfully");
-
-// // Initialize reports table if it doesn't exist
-// await sql.unsafe(reportSchema.createTableQuery);
-// app.log.info("Reports table verified / created successfully");
-
-// // Initialize report_detections table if it doesn't exist
-// await sql.unsafe(reportDetectionSchema.createTableQuery);
-// app.log.info("Report Detections table verified / created successfully");
+await sql.unsafe(userSchema.createTableQuery);
+await sql.unsafe(reportSchema.createTableQuery);
+await sql.unsafe(workerSchema.createTableQuery);
+app.log.info("Database schema verified successfully");
 
 await app.register(helmet);
 await app.register(formbody);

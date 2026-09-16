@@ -4,7 +4,7 @@ export const createUser = async (userData) => {
   const text = `
     INSERT INTO users (name, email, phone, date_of_birth, occupation, bio, password_hash, role)
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-    RETURNING id, name, email, phone, date_of_birth, occupation, bio, role, created_at, updated_at;
+    RETURNING id, name, email, phone, date_of_birth, occupation, bio, role, credit_points, created_at, updated_at;
   `;
   const values = [
     userData.name,
@@ -28,7 +28,7 @@ export const findUserByEmail = async (email) => {
   `;
   const [user] = await sql.unsafe(text, [email]);
   return user;
-};  
+};
 
 export const findUserbyId = async (id) => {
   const text = `
@@ -36,7 +36,7 @@ export const findUserbyId = async (id) => {
   `;
   const [user] = await sql.unsafe(text, [id]);
   return user;
-};  
+};
 
 export const updateUser = async (id, userData) => {
   const text = `
@@ -73,7 +73,7 @@ export const deleteUser = async (id) => {
 
 export const getAllUsers = async () => {
   const text = `
-    SELECT id, name, email, phone, date_of_birth, occupation, bio, role, is_varified_email, created_at, updated_at
+    SELECT id, name, email, phone, date_of_birth, occupation, bio, role, credit_points, is_varified_email, created_at, updated_at
     FROM users
     ORDER BY created_at DESC;
   `;

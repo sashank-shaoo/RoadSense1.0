@@ -8,10 +8,13 @@ export const reportLocationSchema = z.object({
 export const reportCreateSchema = z.object({
   image_mime_type: z.enum(["image/jpeg", "image/png", "image/webp"]),
   original_filename: z.string().trim().min(1).max(255),
+  description: z.string().trim().max(2000).nullable(),
   s3_object_key: z.string().trim().min(1),
   file_size_bytes: z.number().int().positive(),
   location: reportLocationSchema,
 });
+
+export const reportIdSchema = z.string().uuid();
 
 export const reportStatusSchema = z.enum([
   "notStarted",

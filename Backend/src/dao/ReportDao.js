@@ -1,46 +1,155 @@
 import { sql } from "../db/postgres.js";
 
 export const createReport = async (reportData) => {
-  const text = `
-    INSERT INTO reports (
-      user_id, image_mime_type, original_filename, s3_object_key, file_size_bytes, location
-    )
-    VALUES ($1, $2, $3, $4, $5, ST_SetSRID(ST_MakePoint($7, $6), 4326)::geography)
-    RETURNING
+  return await sql.begin(async (transaction) => {
+    const text = `
+      INSERT INTO reports (
+      user_id, image_mime_type, original_filename, description, s3_object_key, file_size_bytes, location
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, ST_SetSRID(ST_MakePoint($8, $7), 4326)::geography)
+      RETURNING
       id,
       user_id,
       image_mime_type,
       original_filename,
+      description,
       s3_object_key,
       file_size_bytes,
       ST_Y(location::geometry) AS latitude,
       ST_X(location::geometry) AS longitude,
-      location_confirmed,
+      json_build_array(ST_X(location::geometry), ST_Y(location::geometry)) AS coordinates,
       status,
-      processing_status,
-      failure_reason,
       detection_count,
       highest_severity,
       damage_score,
       raw_ai_response,
-      ai_model_version,
       created_at,
-      updated_at,
-      processed_at;
+      support_count;
+    `;
+
+    const values = [
+      reportData.user_id,
+      reportData.image_mime_type,
+      reportData.original_filename,
+      reportData.description,
+      reportData.s3_object_key,
+      reportData.file_size_bytes,
+      reportData.location.latitude,
+      reportData.location.longitude,
+    ];
+
+    const [report] = await transaction.unsafe(text, values);
+    const [user] = await transaction.unsafe(
+      `UPDATE users
+       SET credit_points = credit_points + 50, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1
+       RETURNING credit_points`,
+      [reportData.user_id],
+    );
+
+    return { ...report, credit_points: user.credit_points };
+  });
+};
+
+export const findNearbyReport = async (location, radiusMeters = 20) => {
+  const text = `
+    SELECT
+      id,
+      user_id,
+      image_mime_type,
+      original_filename,
+      description,
+      s3_object_key,
+      file_size_bytes,
+      ST_Y(location::geometry) AS latitude,
+      ST_X(location::geometry) AS longitude,
+      json_build_array(ST_X(location::geometry), ST_Y(location::geometry)) AS coordinates,
+      status,
+      detection_count,
+      highest_severity,
+      damage_score,
+      raw_ai_response,
+      support_count,
+      created_at,
+      ST_Distance(
+        location,
+        ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography
+      ) AS distance_meters
+    FROM reports
+    WHERE ST_DWithin(
+      location,
+      ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography,
+      $3
+    )
+    ORDER BY distance_meters ASC, created_at ASC
+    LIMIT 1;
   `;
 
-  const values = [
-    reportData.user_id,
-    reportData.image_mime_type,
-    reportData.original_filename,
-    reportData.s3_object_key,
-    reportData.file_size_bytes,
-    reportData.location.latitude,
-    reportData.location.longitude,
-  ];
-
-  const [report] = await sql.unsafe(text, values);
+  const [report] = await sql.unsafe(text, [
+    location.latitude,
+    location.longitude,
+    radiusMeters,
+  ]);
   return report;
+};
+
+export const supportReport = async (reportId, userId) => {
+  return await sql.begin(async (transaction) => {
+    const [reportOwner] = await transaction.unsafe(
+      "SELECT id, user_id FROM reports WHERE id = $1",
+      [reportId],
+    );
+
+    if (!reportOwner) {
+      throw new Error("Report not found");
+    }
+
+    if (reportOwner.user_id === userId) {
+      throw new Error("Users cannot support their own reports");
+    }
+
+    const [support] = await transaction.unsafe(
+      `INSERT INTO report_supports (report_id, user_id)
+       VALUES ($1, $2)
+       ON CONFLICT (report_id, user_id) DO NOTHING
+       RETURNING report_id`,
+      [reportId, userId],
+    );
+
+    if (!support) {
+      return { alreadySupported: true };
+    }
+
+    const [report] = await transaction.unsafe(
+      `UPDATE reports
+       SET support_count = support_count + 1
+       WHERE id = $1
+       RETURNING id, support_count`,
+      [reportId],
+    );
+
+    if (!report) {
+      throw new Error("Report not found");
+    }
+
+    const [user] = await transaction.unsafe(
+      `UPDATE users
+       SET credit_points = credit_points + 10, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1
+       RETURNING credit_points`,
+      [userId],
+    );
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    return {
+      alreadySupported: false,
+      supportCount: report.support_count,
+      creditPoints: user.credit_points,
+    };
+  });
 };
 
 export const findReportById = async (reportId, userId) => {
@@ -50,22 +159,19 @@ export const findReportById = async (reportId, userId) => {
       user_id,
       image_mime_type,
       original_filename,
+      description,
       s3_object_key,
       file_size_bytes,
       ST_Y(location::geometry) AS latitude,
       ST_X(location::geometry) AS longitude,
-      location_confirmed,
+      json_build_array(ST_X(location::geometry), ST_Y(location::geometry)) AS coordinates,
       status,
-      processing_status,
-      failure_reason,
       detection_count,
       highest_severity,
       damage_score,
       raw_ai_response,
-      ai_model_version,
-      created_at,
-      updated_at,
-      processed_at
+      support_count,
+      created_at
     FROM reports
     WHERE id = $1 AND user_id = $2;
   `;
@@ -81,22 +187,19 @@ export const getReportsByUserId = async (userId) => {
       user_id,
       image_mime_type,
       original_filename,
+      description,
       s3_object_key,
       file_size_bytes,
       ST_Y(location::geometry) AS latitude,
       ST_X(location::geometry) AS longitude,
-      location_confirmed,
+      json_build_array(ST_X(location::geometry), ST_Y(location::geometry)) AS coordinates,
       status,
-      processing_status,
-      failure_reason,
       detection_count,
       highest_severity,
       damage_score,
       raw_ai_response,
-      ai_model_version,
-      created_at,
-      updated_at,
-      processed_at
+      support_count,
+      created_at
     FROM reports
     WHERE user_id = $1
     ORDER BY created_at DESC;
@@ -105,119 +208,33 @@ export const getReportsByUserId = async (userId) => {
   return await sql.unsafe(text, [userId]);
 };
 
-export const confirmReportLocation = async (reportId, userId, location) => {
-  const text = `
-    UPDATE reports
-    SET
-      location = ST_SetSRID(ST_MakePoint($3, $4), 4326)::geography,
-      location_confirmed = true,
-      updated_at = CURRENT_TIMESTAMP
-    WHERE id = $1 AND user_id = $2
-    RETURNING
-      id,
-      user_id,
-      image_mime_type,
-      original_filename,
-      s3_object_key,
-      file_size_bytes,
-      ST_Y(location::geometry) AS latitude,
-      ST_X(location::geometry) AS longitude,
-      location_confirmed,
-      status,
-      processing_status,
-      failure_reason,
-      detection_count,
-      highest_severity,
-      damage_score,
-      raw_ai_response,
-      ai_model_version,
-      created_at,
-      updated_at,
-      processed_at;
-  `;
-
-  const [report] = await sql.unsafe(text, [
-    reportId,
-    userId,
-    location.longitude,
-    location.latitude,
-  ]);
-  return report;
-};
-
-export const markReportProcessing = async (reportId, userId) => {
-  const text = `
-    UPDATE reports
-    SET
-      processing_status = 'PROCESSING',
-      failure_reason = NULL,
-      updated_at = CURRENT_TIMESTAMP
-    WHERE id = $1
-      AND user_id = $2
-      AND location_confirmed = true
-      AND processing_status IN ('PENDING', 'FAILED')
-    RETURNING
-      id,
-      user_id,
-      image_mime_type,
-      original_filename,
-      s3_object_key,
-      file_size_bytes,
-      ST_Y(location::geometry) AS latitude,
-      ST_X(location::geometry) AS longitude,
-      location_confirmed,
-      status,
-      processing_status,
-      failure_reason,
-      detection_count,
-      highest_severity,
-      damage_score,
-      raw_ai_response,
-      ai_model_version,
-      created_at,
-      updated_at,
-      processed_at;
-  `;
-
-  const [report] = await sql.unsafe(text, [reportId, userId]);
-  return report;
-};
-
 export const completeReport = async (reportId, userId, aiResult) => {
   const text = `
     UPDATE reports
     SET
-      processing_status = 'COMPLETED',
-      failure_reason = NULL,
       detection_count = $3,
       highest_severity = $4,
       damage_score = $5,
-      raw_ai_response = $6::jsonb,
-      ai_model_version = $7,
-      updated_at = CURRENT_TIMESTAMP,
-      processed_at = CURRENT_TIMESTAMP
+      raw_ai_response = $6::json
     WHERE id = $1 AND user_id = $2
     RETURNING
       id,
       user_id,
       image_mime_type,
       original_filename,
+      description,
       s3_object_key,
       file_size_bytes,
       ST_Y(location::geometry) AS latitude,
       ST_X(location::geometry) AS longitude,
-      location_confirmed,
+      json_build_array(ST_X(location::geometry), ST_Y(location::geometry)) AS coordinates,
       status,
-      processing_status,
-      failure_reason,
       detection_count,
       highest_severity,
       damage_score,
       raw_ai_response,
-      ai_model_version,
-      created_at,
-      updated_at,
-      processed_at;
+      support_count,
+      created_at;
   `;
 
   const values = [
@@ -227,45 +244,9 @@ export const completeReport = async (reportId, userId, aiResult) => {
     aiResult.highest_severity,
     aiResult.damage_score,
     JSON.stringify(aiResult),
-    aiResult.model_version || null,
   ];
 
   const [report] = await sql.unsafe(text, values);
-  return report;
-};
-
-export const failReport = async (reportId, userId, failureReason) => {
-  const text = `
-    UPDATE reports
-    SET
-      processing_status = 'FAILED',
-      failure_reason = $3,
-      updated_at = CURRENT_TIMESTAMP
-    WHERE id = $1 AND user_id = $2
-    RETURNING
-      id,
-      user_id,
-      image_mime_type,
-      original_filename,
-      s3_object_key,
-      file_size_bytes,
-      ST_Y(location::geometry) AS latitude,
-      ST_X(location::geometry) AS longitude,
-      location_confirmed,
-      status,
-      processing_status,
-      failure_reason,
-      detection_count,
-      highest_severity,
-      damage_score,
-      raw_ai_response,
-      ai_model_version,
-      created_at,
-      updated_at,
-      processed_at;
-  `;
-
-  const [report] = await sql.unsafe(text, [reportId, userId, failureReason]);
   return report;
 };
 
@@ -273,30 +254,26 @@ export const updateReportWorkStatus = async (reportId, status) => {
   const text = `
     UPDATE reports
     SET
-      status = $2,
-      updated_at = CURRENT_TIMESTAMP
+      status = $2
     WHERE id = $1
     RETURNING
       id,
       user_id,
       image_mime_type,
       original_filename,
+      description,
       s3_object_key,
       file_size_bytes,
       ST_Y(location::geometry) AS latitude,
       ST_X(location::geometry) AS longitude,
-      location_confirmed,
+      json_build_array(ST_X(location::geometry), ST_Y(location::geometry)) AS coordinates,
       status,
-      processing_status,
-      failure_reason,
       detection_count,
       highest_severity,
       damage_score,
       raw_ai_response,
-      ai_model_version,
-      created_at,
-      updated_at,
-      processed_at;
+      support_count,
+      created_at;
   `;
 
   const [report] = await sql.unsafe(text, [reportId, status]);
