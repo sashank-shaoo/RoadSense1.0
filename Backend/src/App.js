@@ -89,7 +89,7 @@ await app.register(multipart, {
 
 // Register User Routes under /api/v1/users
 await app.register(userRoutes, { prefix: "/api/v1/users" });
-await app.register(reportRoutes, { prefix: "/api/v1/createreport" });
+await app.register(reportRoutes, { prefix: "/api/v1/reports" });
 
 app.get("/health", async () => {
   return {

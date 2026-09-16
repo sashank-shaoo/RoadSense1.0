@@ -7,6 +7,9 @@ import {
   replaceReportDetections,
   findNearbyReport,
   supportReport,
+  getAllReports,
+  getReportsByUserId,
+  getReportsByStatus,
 } from "../dao/ReportDao.js";
 import {
   createDownloadUrl,
@@ -18,6 +21,7 @@ import {
   aiResponseSchema,
   reportCreateSchema,
   reportIdSchema,
+  reportStatusSchema,
 } from "../zod/ReportSchema.js";
 
 const getS3ErrorStatus = (error) => {
@@ -282,6 +286,61 @@ export const supportExistingReport = async (request, reply) => {
             : error.message === "User not found"
               ? "Authenticated user not found"
               : "Failed to support report",
+    });
+  }
+};
+
+export const getAllReportsController = async (request, reply) => {
+  try {
+    const reports = await getAllReports();
+    return reply.status(200).send({ success: true, reports });
+  } catch (error) {
+    request.log.error(error);
+    return reply.status(500).send({
+      success: false,
+      error: "Failed to fetch reports",
+    });
+  }
+};
+
+export const getReportsByUser = async (request, reply) => {
+  try {
+    const userIdResult = reportIdSchema.safeParse(request.params.userId);
+    if (!userIdResult.success) {
+      return reply.status(400).send({
+        success: false,
+        error: "userId must be a valid UUID",
+      });
+    }
+
+    const reports = await getReportsByUserId(userIdResult.data);
+    return reply.status(200).send({ success: true, reports });
+  } catch (error) {
+    request.log.error(error);
+    return reply.status(500).send({
+      success: false,
+      error: "Failed to fetch user reports",
+    });
+  }
+};
+
+export const getReportsByStatus = async (request, reply) => {
+  try {
+    const statusResult = reportStatusSchema.safeParse(request.params.status);
+    if (!statusResult.success) {
+      return reply.status(400).send({
+        success: false,
+        error: "status must be notStarted, onGoing, or completed",
+      });
+    }
+
+    const reports = await getReportsByStatus(statusResult.data);
+    return reply.status(200).send({ success: true, reports });
+  } catch (error) {
+    request.log.error(error);
+    return reply.status(500).send({
+      success: false,
+      error: "Failed to fetch reports by status",
     });
   }
 };

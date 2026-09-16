@@ -208,6 +208,61 @@ export const getReportsByUserId = async (userId) => {
   return await sql.unsafe(text, [userId]);
 };
 
+export const getAllReports = async () => {
+  const text = `
+    SELECT
+      id,
+      user_id,
+      image_mime_type,
+      original_filename,
+      description,
+      s3_object_key,
+      file_size_bytes,
+      ST_Y(location::geometry) AS latitude,
+      ST_X(location::geometry) AS longitude,
+      json_build_array(ST_X(location::geometry), ST_Y(location::geometry)) AS coordinates,
+      status,
+      detection_count,
+      highest_severity,
+      damage_score,
+      raw_ai_response,
+      support_count,
+      created_at
+    FROM reports
+    ORDER BY created_at DESC;
+  `;
+
+  return await sql.unsafe(text);
+};
+
+export const getReportsByStatus = async (status) => {
+  const text = `
+    SELECT
+      id,
+      user_id,
+      image_mime_type,
+      original_filename,
+      description,
+      s3_object_key,
+      file_size_bytes,
+      ST_Y(location::geometry) AS latitude,
+      ST_X(location::geometry) AS longitude,
+      json_build_array(ST_X(location::geometry), ST_Y(location::geometry)) AS coordinates,
+      status,
+      detection_count,
+      highest_severity,
+      damage_score,
+      raw_ai_response,
+      support_count,
+      created_at
+    FROM reports
+    WHERE status = $1
+    ORDER BY created_at DESC;
+  `;
+
+  return await sql.unsafe(text, [status]);
+};
+
 export const completeReport = async (reportId, userId, aiResult) => {
   const text = `
     UPDATE reports
