@@ -4,9 +4,12 @@ import {
   findWorkerGroupByEmail,
   findWorkerGroupById,
   getAllWorkerGroups,
+  updateWorkerGroupCredentials,
 } from "../dao/WorkerDao.js";
 import {
   workerGroupCreateSchema,
+  workerGroupCredentialsSchema,
+  workerGroupIdSchema,
   workerGroupLoginSchema,
 } from "../zod/WorkerSchema.js";
 
@@ -19,14 +22,13 @@ const workerCookieOptions = (request) => ({
 });
 
 export const requireAdmin = async (request, reply) => {
-  if (!["ADMIN", "SUPER_ADMIN"].includes(request.user?.role)) {
+  if (!request.user?.admin || request.user.role !== "ADMIN") {
     return reply.status(403).send({
       success: false,
       error: "Only administrators can create worker groups",
     });
   }
 };
-
 export const requireWorkerGroup = async (request, reply) => {
   if (request.user?.role !== "WORKER_GROUP") {
     return reply.status(403).send({
@@ -35,6 +37,7 @@ export const requireWorkerGroup = async (request, reply) => {
     });
   }
 };
+
 
 export const createWorkerGroupController = async (request, reply) => {
   try {
@@ -90,7 +93,7 @@ export const loginWorkerGroup = async (request, reply) => {
       validationResult.data.email,
     );
     if (
-      !workerGroup ||
+      !workerGroup?.password_hash ||
       !(await argon2.verify(
         workerGroup.password_hash,
         validationResult.data.password,
@@ -106,13 +109,13 @@ export const loginWorkerGroup = async (request, reply) => {
       {
         id: workerGroup.id,
         email: workerGroup.email,
-        role: "WORKER_GROUP",
+        role: workerGroup.role,
         name: workerGroup.name,
       },
       { expiresIn: "7d" },
     );
 
-    reply.setCookie("token", token, workerCookieOptions(request));
+    reply.setCookie("worker_token", token, workerCookieOptions(request));
     return reply.status(200).send({
       success: true,
       message: "Worker group login successful",
@@ -120,6 +123,7 @@ export const loginWorkerGroup = async (request, reply) => {
         id: workerGroup.id,
         name: workerGroup.name,
         email: workerGroup.email,
+        role: workerGroup.role,
       },
       token,
     });
@@ -133,7 +137,7 @@ export const loginWorkerGroup = async (request, reply) => {
 };
 
 export const logoutWorkerGroup = async (request, reply) => {
-  reply.clearCookie("token", { path: "/" });
+  reply.clearCookie("worker_token", { path: "/" });
   return reply.status(200).send({
     success: true,
     message: "Worker group logout successful",
@@ -162,7 +166,6 @@ export const getWorkerGroupProfile = async (request, reply) => {
     });
   }
 };
-
 export const getallWorker_group = async (request, reply) => {
   try {
     const workerGroups = await getAllWorkerGroups();
@@ -175,6 +178,57 @@ export const getallWorker_group = async (request, reply) => {
     return reply.status(500).send({
       success: false,
       error: "Failed to fetch worker groups",
+    });
+  }
+};
+
+export const resetWorkerGroupCredentials = async (request, reply) => {
+  try {
+    const groupIdResult = workerGroupIdSchema.safeParse(
+      request.params.workerGroupId,
+    );
+    const credentialsResult = workerGroupCredentialsSchema.safeParse(
+      request.body,
+    );
+    if (!groupIdResult.success || !credentialsResult.success) {
+      return reply.status(400).send({
+        success: false,
+        error: "Valid worker group UUID, email, and password are required",
+      });
+    }
+
+    const existingGroup = await findWorkerGroupByEmail(
+      credentialsResult.data.email,
+    );
+    if (existingGroup && existingGroup.id !== groupIdResult.data) {
+      return reply.status(409).send({
+        success: false,
+        error: "Worker group email already exists",
+      });
+    }
+
+    const workerGroup = await updateWorkerGroupCredentials(
+      groupIdResult.data,
+      credentialsResult.data.email,
+      await argon2.hash(credentialsResult.data.password),
+    );
+    if (!workerGroup) {
+      return reply.status(404).send({
+        success: false,
+        error: "Worker group not found",
+      });
+    }
+
+    return reply.status(200).send({
+      success: true,
+      message: "Worker group credentials updated successfully",
+      worker_group: workerGroup,
+    });
+  } catch (error) {
+    request.log.error(error);
+    return reply.status(500).send({
+      success: false,
+      error: "Failed to update worker group credentials",
     });
   }
 };

@@ -5,6 +5,9 @@
 export const authenticate = async (request, reply) => {
   try {
     const token =
+      request.cookies?.admin_token ||
+      request.cookies?.worker_token ||
+      request.cookies?.user_token ||
       request.cookies?.token ||
       (request.headers.authorization?.startsWith("Bearer ")
         ? request.headers.authorization.split(" ")[1]

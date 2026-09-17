@@ -13,7 +13,6 @@ import {
 } from "../dao/ReportDao.js";
 import {
   createDownloadUrl,
-  downloadObject,
   uploadObject,
 } from "../AWS/s3Service.js";
 import { predictImage } from "../AWS/ec2Service.js";
@@ -23,6 +22,28 @@ import {
   reportIdSchema,
   reportStatusSchema,
 } from "../zod/ReportSchema.js";
+
+export const requireAdminOrWorkerGroup = async (request, reply) => {
+  if (
+    !(request.user?.admin && request.user.role === "ADMIN") &&
+    request.user?.role !== "WORKER_GROUP"
+  ) {
+    return reply.status(403).send({
+      success: false,
+      error: "Administrator or worker group authentication required",
+    });
+  }
+};
+
+export const requireReportOwnerOrAdmin = async (request, reply) => {
+  const isAdmin = request.user?.admin && request.user.role === "ADMIN";
+  if (!isAdmin && request.user?.id !== request.params.userId) {
+    return reply.status(403).send({
+      success: false,
+      error: "You can only view your own reports",
+    });
+  }
+};
 
 const getS3ErrorStatus = (error) => {
   if (error?.name === "NotFound" || error?.$metadata?.httpStatusCode === 404) {
@@ -156,18 +177,12 @@ export const createReport = async (request, reply) => {
       user_id: userId,
     });
 
-    let processingPhase = "downloading image from S3";
+    let processingPhase = "calling EC2 AI prediction service";
     let aiValidationIssues;
 
     try {
-      const image = await downloadObject({
-        objectKey: reportData.s3_object_key,
-        config: request.server.config,
-      });
-
-      processingPhase = "calling EC2 AI prediction service";
       const aiResponse = await predictImage({
-        imageBuffer: image.body,
+        imageBuffer,
         filename: reportData.original_filename,
         contentType: reportData.image_mime_type,
         config: request.server.config,
@@ -205,12 +220,13 @@ export const createReport = async (request, reply) => {
         expiresIn: 3600,
         config: request.server.config,
       });
+      const { s3_object_key, ...publicReport } = completedReport;
 
       return reply.status(201).send({
         success: true,
         message: "Report created and processed successfully",
         report: {
-          ...completedReport,
+          ...publicReport,
           image_url: imageUrl,
         },
       });

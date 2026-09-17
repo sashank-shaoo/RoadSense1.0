@@ -14,7 +14,7 @@ export const userSchema = {
     role: {
       type: "VARCHAR(50)",
       default: "END_USER",
-      enum: ["END_USER", "WORKER", "ADMIN", "SUPER_ADMIN"],
+      enum: ["END_USER", "WORKER"],
     },
     credit_points: { type: "INTEGER", required: true, default: 0 },
     is_varified_email: { type: "BOOLEAN", default: false },
@@ -47,6 +47,23 @@ export const userSchema = {
 
     ALTER TABLE users
       ADD COLUMN IF NOT EXISTS credit_points INTEGER NOT NULL DEFAULT 0;
+
+    UPDATE users SET role = 'END_USER' WHERE role = 'ADMIN';
+    ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'users_role_user_only'
+          AND conrelid = 'users'::regclass
+      ) THEN
+        ALTER TABLE users
+          ADD CONSTRAINT users_role_user_only
+          CHECK (role IN ('END_USER', 'WORKER'));
+      END IF;
+    END;
+    $$;
   `,
   //     deleteTableQuery: `
   //   DROP TABLE IF EXISTS users;

@@ -10,3 +10,10 @@ export const workerGroupLoginSchema = z.object({
   email: z.string().trim().email(),
   password: z.string().min(6).max(255),
 });
+
+export const workerGroupCredentialsSchema = z.object({
+  email: z.string().trim().email(),
+  password: z.string().min(6).max(255),
+});
+
+export const workerGroupIdSchema = z.string().uuid();

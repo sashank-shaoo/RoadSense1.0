@@ -3,21 +3,27 @@ import {
   getAllReportsController,
   getReportsByStatus,
   getReportsByUser,
+  requireAdminOrWorkerGroup,
+  requireReportOwnerOrAdmin,
   supportExistingReport,
 } from "../controllers/Report.controller.js";
+import { requireAdmin } from "../controllers/Admin.controller.js";
 import { authenticate } from "../middlewares/auth.middleware.js";
 
 const reportRoutes = async (fastify) => {
   fastify.post("/create", { preHandler: [authenticate] }, createReport);
-  fastify.get("/all", { preHandler: [authenticate] }, getAllReportsController);
+  fastify.get(
+    "/all",
+    getAllReportsController,
+  );
   fastify.get(
     "/user/:userId",
-    { preHandler: [authenticate] },
+    { preHandler: [authenticate, requireReportOwnerOrAdmin] },
     getReportsByUser,
   );
   fastify.get(
     "/status/:status",
-    { preHandler: [authenticate] },
+    { preHandler: [authenticate, requireAdminOrWorkerGroup] },
     getReportsByStatus,
   );
   fastify.post(

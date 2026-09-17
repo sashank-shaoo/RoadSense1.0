@@ -156,7 +156,7 @@ export const verifyEmail = async (req, res) => {
       { expiresIn: "7d" },
     );
 
-    res.setCookie("token", token, {
+    res.setCookie("user_token", token, {
       path: "/",
       httpOnly: true,
       secure: req.server.config.NODE_ENV === "production",
@@ -253,7 +253,7 @@ export const loginUser = async (req, res) => {
       { expiresIn: "7d" },
     );
 
-    res.setCookie("token", token, {
+    res.setCookie("user_token", token, {
       path: "/",
       httpOnly: true,
       secure: req.server.config.NODE_ENV === "production",
@@ -276,7 +276,7 @@ export const loginUser = async (req, res) => {
 };
 
 export const logoutUser = async (req, res) => {
-  res.clearCookie("token", {
+  res.clearCookie("user_token", {
     path: "/",
     httpOnly: true,
     secure: req.server.config.NODE_ENV === "production",
@@ -357,7 +357,7 @@ export const deleteCurrentUser = async (req, res) => {
     }
 
     await deleteUser(userId);
-    res.clearCookie("token", { path: "/" });
+    res.clearCookie("user_token", { path: "/" });
     return res.status(200).send({ message: "User deleted successfully" });
   } catch (error) {
     req.log.error(error);

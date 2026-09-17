@@ -7,6 +7,7 @@ export const workerSchema = {
     name: { type: "VARCHAR(255)", required: true },
     email: { type: "VARCHAR(255)", required: true, unique: true },
     password_hash: { type: "VARCHAR(255)", required: true },
+    role: { type: "VARCHAR(50)", required: true, default: "WORKER_GROUP" },
   },
 
   createTableQuery: `
@@ -17,6 +18,8 @@ export const workerSchema = {
       name VARCHAR(255) NOT NULL,
       email VARCHAR(255) NOT NULL UNIQUE,
       password_hash VARCHAR(255) NOT NULL,
+      role VARCHAR(50) NOT NULL DEFAULT 'WORKER_GROUP'
+        CHECK (role = 'WORKER_GROUP'),
       CONSTRAINT worker_group_name_unique UNIQUE (name)
     );
 
@@ -44,7 +47,25 @@ export const workerSchema = {
 
     ALTER TABLE worker_groups
       ADD COLUMN IF NOT EXISTS email VARCHAR(255),
-      ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);
+      ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS role VARCHAR(50) NOT NULL DEFAULT 'WORKER_GROUP';
+
+    UPDATE worker_groups SET role = 'WORKER_GROUP' WHERE role <> 'WORKER_GROUP';
+    ALTER TABLE worker_groups DROP CONSTRAINT IF EXISTS worker_groups_role_check;
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'worker_groups_role_worker_group_only'
+          AND conrelid = 'worker_groups'::regclass
+      ) THEN
+        ALTER TABLE worker_groups
+          ADD CONSTRAINT worker_groups_role_worker_group_only
+          CHECK (role = 'WORKER_GROUP');
+      END IF;
+    END;
+    $$;
 
     CREATE UNIQUE INDEX IF NOT EXISTS worker_groups_email_unique_idx
       ON worker_groups (email)

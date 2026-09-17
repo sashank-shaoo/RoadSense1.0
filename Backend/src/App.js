@@ -1,18 +1,19 @@
 import Fastify from "fastify";
 import env from "@fastify/env";
 import helmet from "@fastify/helmet";
+import cors from "@fastify/cors";
+import rateLimit from "@fastify/rate-limit";
 import formbody from "@fastify/formbody";
 import cookie from "@fastify/cookie";
 import jwt from "@fastify/jwt";
 import multipart from "@fastify/multipart";
+import { rateLimitConfig } from "./services/rateLimitService.js";
 
 import { createDatabase } from "./db/postgres.js";
-import userSchema from "./models/User.model.js";
-import reportSchema from "./models/Report.model.js";
-import workerSchema from "./models/Worker.model.js";
 import userRoutes from "./routes/User.route.js";
 import reportRoutes from "./routes/Report.route.js";
 import workerRoutes from "./routes/Worker.route.js";
+import adminRoutes from "./routes/Admin.route.js";
 const app = Fastify({
   logger: true,
 });
@@ -61,6 +62,10 @@ await app.register(env, {
       AWS_SESSION_TOKEN: { type: "string" },
       AI_SERVICE_URL: { type: "string" },
       AI_SERVICE_TIMEOUT_MS: { type: "string", default: "30000" },
+      ADMIN_BOOTSTRAP_NAME: { type: "string" },
+      ADMIN_BOOTSTRAP_EMAIL: { type: "string" },
+      ADMIN_BOOTSTRAP_PASSWORD: { type: "string" },
+      ADMIN_CREATION_ENABLED: { type: "string", default: "false" },
     },
   },
 });
@@ -68,12 +73,15 @@ await app.register(env, {
 const sql = createDatabase(app.config);
 app.decorate("db", sql);
 await sql`SELECT 1`;
-await sql.unsafe(userSchema.createTableQuery);
-await sql.unsafe(reportSchema.createTableQuery);
-await sql.unsafe(workerSchema.createTableQuery);
-app.log.info("Database schema verified successfully");
+app.log.info("Database connection established successfully");
 
 await app.register(helmet);
+await app.register(cors, {
+  origin: true,
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+});
+await app.register(rateLimit, rateLimitConfig);
 await app.register(formbody);
 await app.register(cookie, {
   secret: app.config.COOKIE_SECRET || "default_cookie_secret_hackathon",
@@ -92,16 +100,28 @@ await app.register(multipart, {
 await app.register(userRoutes, { prefix: "/api/v1/users" });
 await app.register(reportRoutes, { prefix: "/api/v1/reports" });
 await app.register(workerRoutes, { prefix: "/api/v1/workers" });
+if (app.config.ADMIN_CREATION_ENABLED === "true") {
+  app.log.warn("Temporary public admin creation route is enabled");
+}
+await app.register(adminRoutes, { prefix: "/api/v1/admin" });
 
-app.get("/health", async () => {
-  return {
-    success: true,
-    service: "RodeSence Backend",
-    status: "Healthy",
-    database: "Connected",
-    s3: "Connected",
-    ec2_ai: "Connected",
-  };
+app.get("/health", async (request, reply) => {
+  let dbStatus = "Disconnected";
+  try {
+    await app.db`SELECT 1`;
+    dbStatus = "Connected";
+  } catch (error) {
+    app.log.error({ error }, "Database health check failed");
+  }
+
+  const isHealthy = dbStatus === "Connected";
+  return reply.status(isHealthy ? 200 : 503).send({
+    success: isHealthy,
+    service: "RodeSense Backend",
+    status: isHealthy ? "Healthy" : "Degraded",
+    database: dbStatus,
+    timestamp: new Date().toISOString(),
+  });
 });
 
 export default app;
