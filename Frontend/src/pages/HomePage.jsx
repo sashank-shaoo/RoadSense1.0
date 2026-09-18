@@ -104,7 +104,7 @@ export default function HomePage() {
                 color: '#1A5C9E',
                 bg: 'rgba(26,92,158,0.08)',
                 step: '02 — Analyze',
-                title: 'YOLOv8 AI Analysis',
+                title: 'YOLOv11 AI Analysis',
                 desc: 'Our custom-trained road damage model classifies potholes, cracks, ruts, and scores severity instantly.',
               },
               {

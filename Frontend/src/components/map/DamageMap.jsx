@@ -1,10 +1,9 @@
 import { useEffect } from 'react';
-import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaflet';
-import { useDispatch, useSelector } from 'react-redux';
+import { MapContainer, TileLayer, CircleMarker, Tooltip, useMap } from 'react-leaflet';
+import { useDispatch } from 'react-redux';
 import { setActiveReport } from '../../store/slices/reportSlice.js';
 import { openModal } from '../../store/slices/uiSlice.js';
-import { getSeverityLevel, getSeverityColor, getStatusLabel, formatRelativeTime, formatScore } from '../../utils/helpers.js';
-import { MapPin, AlertTriangle, ThumbsUp, Clock } from 'lucide-react';
+import { getSeverityLevel, getSeverityColor, getSeverityLabel, getStatusLabel, getStatusColor } from '../../utils/helpers.js';
 import styles from './DamageMap.module.css';
 import 'leaflet/dist/leaflet.css';
 
@@ -34,11 +33,11 @@ function SetViewOnReports({ reports }) {
   return null;
 }
 
-export default function DamageMap({ reports = [], height = '100%', showPopup = true, interactive = true }) {
+export default function DamageMap({ reports = [], height = '100%', showPopup = false, interactive = true }) {
   const dispatch = useDispatch();
 
   const handleMarkerClick = (report) => {
-    if (showPopup && interactive) {
+    if (interactive) {
       dispatch(setActiveReport(report));
       dispatch(openModal('reportDetail'));
     }
@@ -60,8 +59,8 @@ export default function DamageMap({ reports = [], height = '100%', showPopup = t
         attributionControl={false}
       >
         <TileLayer
-          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         />
 
         {reports.map((report) => {
@@ -72,15 +71,19 @@ export default function DamageMap({ reports = [], height = '100%', showPopup = t
 
           if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) return null;
 
+          const reportIdShort = report.id ? (report.id.length > 10 ? `#${report.id.slice(0, 8)}` : `#${report.id}`) : '#N/A';
+          const statusLabel = getStatusLabel(report.status);
+          const statusColor = getStatusColor(report.status);
+
           return (
             <CircleMarker
               key={report.id}
               center={[lat, lng]}
-              radius={level === 'critical' ? 14 : level === 'high' ? 11 : 9}
+              radius={level === 'critical' ? 12 : level === 'high' ? 10 : 8}
               pathOptions={{
                 fillColor: color,
-                fillOpacity: 0.85,
-                color: color,
+                fillOpacity: 0.9,
+                color: '#111110',
                 weight: 2,
                 opacity: 1,
               }}
@@ -88,52 +91,22 @@ export default function DamageMap({ reports = [], height = '100%', showPopup = t
                 click: () => handleMarkerClick(report),
               }}
             >
-              <Popup className={styles.popup}>
-                <div className={styles.popupContent}>
-                  {/* Media Thumbnail */}
-                  {(report.image_url || report.media_url || report.video_url) && (
-                    <div className={styles.popupThumb}>
-                      {report.media_type === 'video' || report.video_url ? (
-                        <video
-                          src={report.video_url || report.media_url}
-                          muted
-                          preload="metadata"
-                        />
-                      ) : (
-                        <img
-                          src={report.image_url || report.media_url}
-                          alt={report.description || 'Road damage'}
-                        />
-                      )}
-                    </div>
-                  )}
-                  <div className={styles.popupHeader}>
-                    <span className={styles.popupSeverity} style={{ color }}>
-                      ● {level.toUpperCase()}
-                    </span>
-                    <span className={styles.popupScore}>
-                      Score: {formatScore(report.damage_score, 1)}
+              <Tooltip direction="top" offset={[0, -8]} opacity={1} className={styles.hoverTooltip}>
+                <div className={styles.tooltipCard}>
+                  <div className={styles.tooltipHeader}>
+                    <span className={styles.tooltipId}>{reportIdShort}</span>
+                    <span className={styles.tooltipSeverity} style={{ borderColor: color, color }}>
+                      {getSeverityLabel(level)}
                     </span>
                   </div>
-                  <p className={styles.popupDesc}>{report.description || report.original_filename}</p>
-                  <div className={styles.popupMeta}>
-                    <span><AlertTriangle size={11} /> {report.detection_count || 0} detections</span>
-                    <span><ThumbsUp size={11} /> {report.support_count || 0}</span>
-                    <span><Clock size={11} /> {formatRelativeTime(report.created_at)}</span>
+                  <div className={styles.tooltipRow}>
+                    <span className={styles.tooltipLabel}>STATUS</span>
+                    <span className={styles.tooltipStatus} style={{ color: statusColor }}>
+                      ● {statusLabel}
+                    </span>
                   </div>
-                  <div className={styles.popupStatus} style={{ color: getStatusLabel(report.status) === 'Completed' ? '#10b981' : '#94a3b8' }}>
-                    {getStatusLabel(report.status)}
-                  </div>
-                  {showPopup && (
-                    <button
-                      className={styles.popupBtn}
-                      onClick={() => handleMarkerClick(report)}
-                    >
-                      View Details →
-                    </button>
-                  )}
                 </div>
-              </Popup>
+              </Tooltip>
             </CircleMarker>
           );
         })}
