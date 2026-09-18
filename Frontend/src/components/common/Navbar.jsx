@@ -4,7 +4,7 @@ import { openModal } from '../../store/slices/uiSlice.js';
 import { logoutSuccess } from '../../store/slices/authSlice.js';
 import { authApi } from '../../api/authApi.js';
 import {
-  MapPin, AlertTriangle, User, LayoutDashboard, Menu, X, Star, LogOut, ChevronDown, Wrench, ShieldCheck,
+  MapPin, AlertTriangle, User, LayoutDashboard, Menu, X, Star, LogOut, ChevronDown, Wrench, ShieldCheck, FileText,
 } from 'lucide-react';
 import { useState } from 'react';
 import styles from './Navbar.module.css';
@@ -55,15 +55,12 @@ export default function Navbar() {
           <Link to="/explore" className={`${styles.navLink} ${isActive('/explore') ? styles.active : ''}`}>
             <MapPin size={14} /> Explore
           </Link>
-          {isAuthenticated && (
-            <button
-              className={styles.navLink}
-              onClick={() => dispatch(openModal('createReport'))}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', font: 'inherit' }}
-            >
-              <AlertTriangle size={14} /> Report
-            </button>
-          )}
+          <Link to="/reports" className={`${styles.navLink} ${isActive('/reports') ? styles.active : ''}`}>
+            <FileText size={14} /> Reports
+          </Link>
+          <Link to="/report" className={`${styles.navLink} ${isActive('/report') ? styles.active : ''}`}>
+            <AlertTriangle size={14} /> Report
+          </Link>
           {role === 'WORKER_GROUP' && (
             <Link to="/worker" className={`${styles.navLink} ${isActive('/worker') ? styles.active : ''}`}>
               <Wrench size={14} /> Portal
@@ -133,15 +130,8 @@ export default function Navbar() {
         <div className={styles.mobileMenu}>
           <Link to="/" className={styles.mobileLink} onClick={() => setMenuOpen(false)}>Home</Link>
           <Link to="/explore" className={styles.mobileLink} onClick={() => setMenuOpen(false)}>Explore Map</Link>
-          {isAuthenticated && (
-            <button
-              className={styles.mobileLink}
-              onClick={() => { setMenuOpen(false); dispatch(openModal('createReport')); }}
-              style={{ background: 'none', border: 'none', textAlign: 'left', width: '100%', cursor: 'pointer' }}
-            >
-              Report Damage
-            </button>
-          )}
+          <Link to="/reports" className={styles.mobileLink} onClick={() => setMenuOpen(false)}>All Reports</Link>
+          <Link to="/report" className={styles.mobileLink} onClick={() => setMenuOpen(false)}>Report Damage</Link>
           {role === 'WORKER_GROUP' && (
             <Link to="/worker" className={styles.mobileLink} onClick={() => setMenuOpen(false)}>Worker Portal</Link>
           )}

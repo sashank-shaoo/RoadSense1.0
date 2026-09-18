@@ -58,9 +58,9 @@ export default function HomePage() {
               </>
             ) : (
               <>
-                <button className="btn btn-primary btn-lg" onClick={() => dispatch(openModal('createReport'))}>
+                <Link to="/report" className="btn btn-primary btn-lg">
                   <AlertTriangle size={18} /> Report Damage
-                </button>
+                </Link>
                 <Link to="/explore" className="btn btn-secondary btn-lg">
                   <MapPin size={18} /> Live Map
                 </Link>
