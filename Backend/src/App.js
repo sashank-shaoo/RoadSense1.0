@@ -92,7 +92,7 @@ await app.register(jwt, {
 await app.register(multipart, {
   limits: {
     files: 1,
-    fileSize: 10 * 1024 * 1024,
+    fileSize: 100 * 1024 * 1024, // 100MB limit for image/video uploads
   },
 });
 

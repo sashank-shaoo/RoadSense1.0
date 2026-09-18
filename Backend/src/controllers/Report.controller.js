@@ -15,7 +15,7 @@ import {
   createDownloadUrl,
   uploadObject,
 } from "../AWS/s3Service.js";
-import { predictImage } from "../AWS/ec2Service.js";
+import { predictMedia } from "../AWS/ec2Service.js";
 import {
   aiResponseSchema,
   reportCreateSchema,
@@ -57,6 +57,31 @@ const getS3ErrorStatus = (error) => {
   return 502;
 };
 
+const attachMediaUrls = async (reports, config) => {
+  return Promise.all(
+    reports.map(async (report) => {
+      let mediaUrl = null;
+      if (report.s3_object_key) {
+        try {
+          mediaUrl = await createDownloadUrl({
+            objectKey: report.s3_object_key,
+            expiresIn: 3600,
+            config,
+          });
+        } catch {
+          // If signing fails, keep null
+        }
+      }
+      return {
+        ...report,
+        media_url: mediaUrl,
+        image_url: mediaUrl,
+        video_url: report.media_type === "video" ? mediaUrl : null,
+      };
+    }),
+  );
+};
+
 export const createReport = async (request, reply) => {
   try {
     const userId = request.user?.id;
@@ -89,26 +114,26 @@ export const createReport = async (request, reply) => {
       });
     }
 
-    let imageUpload;
+    let mediaUpload;
     const formFields = {};
 
     for await (const part of request.parts()) {
       if (part.type === "file") {
-        if (imageUpload) {
+        if (mediaUpload) {
           return reply.status(400).send({
             success: false,
-            error: "Only one image file is allowed",
+            error: "Only one media file (image or video) is allowed per report",
           });
         }
 
         if (part.fieldname !== "file") {
           return reply.status(400).send({
             success: false,
-            error: "Image field must be named 'file'",
+            error: "Media file field must be named 'file'",
           });
         }
 
-        imageUpload = {
+        mediaUpload = {
           buffer: await part.toBuffer(),
           filename: part.filename,
           mimetype: part.mimetype,
@@ -118,23 +143,39 @@ export const createReport = async (request, reply) => {
       }
     }
 
-    if (!imageUpload) {
+    if (!mediaUpload) {
       return reply.status(400).send({
         success: false,
-        error: "An image file is required",
+        error: "A media file (image or video) is required",
       });
     }
 
-    const imageBuffer = imageUpload.buffer;
+    const isVideo = mediaUpload.mimetype.startsWith("video/");
+    const isImage = mediaUpload.mimetype.startsWith("image/");
+    if (!isVideo && !isImage) {
+      return reply.status(400).send({
+        success: false,
+        error: "Uploaded file must be a valid image or video",
+      });
+    }
+
+    const mediaType = isVideo ? "video" : "image";
+    const mediaBuffer = mediaUpload.buffer;
     const latitude = Number(formFields.latitude);
     const longitude = Number(formFields.longitude);
-    const safeFilename = basename(imageUpload.filename);
+    const safeFilename = basename(mediaUpload.filename);
+
+    // Stored in separate S3 paths: reports/images/... or reports/videos/...
+    const folder = mediaType === "video" ? "reports/videos" : "reports/images";
+    const s3ObjectKey = `${folder}/${userId}/${randomUUID()}/${safeFilename}`;
+
     const reportDataInput = {
-      image_mime_type: imageUpload.mimetype,
+      media_type: mediaType,
+      image_mime_type: mediaUpload.mimetype,
       original_filename: safeFilename,
       description: formFields.description || null,
-      s3_object_key: `reports/${userId}/${randomUUID()}/${safeFilename}`,
-      file_size_bytes: imageBuffer.length,
+      s3_object_key: s3ObjectKey,
+      file_size_bytes: mediaBuffer.length,
       location: { latitude, longitude },
     };
 
@@ -149,26 +190,45 @@ export const createReport = async (request, reply) => {
     const reportData = validationResult.data;
     const nearbyReport = await findNearbyReport(reportData.location, 20);
     if (nearbyReport) {
+      let nearbyMediaUrl = null;
+      if (nearbyReport.s3_object_key) {
+        try {
+          nearbyMediaUrl = await createDownloadUrl({
+            objectKey: nearbyReport.s3_object_key,
+            expiresIn: 3600,
+            config: request.server.config,
+          });
+        } catch {
+          // ignore error
+        }
+      }
+
       return reply.status(200).send({
         success: true,
         duplicate: true,
         message: "A report already exists within 20 meters",
-        report: nearbyReport,
+        report: {
+          ...nearbyReport,
+          s3_object_key: nearbyReport.s3_object_key,
+          media_url: nearbyMediaUrl,
+          image_url: nearbyMediaUrl,
+          video_url: nearbyReport.media_type === "video" ? nearbyMediaUrl : null,
+        },
       });
     }
 
     try {
       await uploadObject({
         objectKey: reportData.s3_object_key,
-        body: imageBuffer,
+        body: mediaBuffer,
         contentType: reportData.image_mime_type,
         config: request.server.config,
       });
     } catch (error) {
-      request.log.error({ error }, "Unable to upload report image to S3");
+      request.log.error({ error }, "Unable to upload report media to S3");
       return reply.status(getS3ErrorStatus(error)).send({
         success: false,
-        error: "Report image could not be uploaded to S3",
+        error: "Report media could not be uploaded to S3",
       });
     }
 
@@ -177,12 +237,15 @@ export const createReport = async (request, reply) => {
       user_id: userId,
     });
 
-    let processingPhase = "calling EC2 AI prediction service";
+    let processingPhase = "calling EC2 AI prediction service with S3 object key";
     let aiValidationIssues;
 
     try {
-      const aiResponse = await predictImage({
-        imageBuffer,
+      // Pass S3 object key, bucket, and media details to EC2 AI service
+      const aiResponse = await predictMedia({
+        s3ObjectKey: reportData.s3_object_key,
+        mediaType: reportData.media_type,
+        mediaBuffer,
         filename: reportData.original_filename,
         contentType: reportData.image_mime_type,
         config: request.server.config,
@@ -215,31 +278,63 @@ export const createReport = async (request, reply) => {
         userId,
         validatedAiResponse.data,
       );
-      const imageUrl = await createDownloadUrl({
+
+      const mediaUrl = await createDownloadUrl({
         objectKey: completedReport.s3_object_key,
         expiresIn: 3600,
         config: request.server.config,
       });
-      const { s3_object_key, ...publicReport } = completedReport;
 
       return reply.status(201).send({
         success: true,
         message: "Report created and processed successfully",
         report: {
-          ...publicReport,
-          image_url: imageUrl,
+          ...completedReport,
+          s3_object_key: completedReport.s3_object_key,
+          media_type: completedReport.media_type || reportData.media_type,
+          media_url: mediaUrl,
+          image_url: mediaUrl,
+          video_url: (completedReport.media_type || reportData.media_type) === "video" ? mediaUrl : null,
         },
       });
     } catch (error) {
       request.log.error(
-        { error, reportId: createdReport.id, processingPhase },
-        "Report processing failed",
+        {
+          reportId: createdReport.id,
+          processingPhase,
+          errorName: error?.name,
+          errorMessage: error?.message,
+          errorCode: error?.code,
+          errorCause: error?.cause?.message,
+        },
+        "Report AI processing failed",
       );
-      return reply.status(502).send({
-        success: false,
-        error: "Report was created, but image processing failed",
+
+      // Even if AI prediction encounters an issue, return the saved report and media URL
+      let fallbackMediaUrl = null;
+      try {
+        fallbackMediaUrl = await createDownloadUrl({
+          objectKey: createdReport.s3_object_key,
+          expiresIn: 3600,
+          config: request.server.config,
+        });
+      } catch {
+        // ignore
+      }
+
+      return reply.status(202).send({
+        success: true,
+        warning: "Report was saved and uploaded to S3, but AI processing failed or timed out",
         report_id: createdReport.id,
         failed_phase: processingPhase,
+        report: {
+          ...createdReport,
+          s3_object_key: createdReport.s3_object_key,
+          media_type: reportData.media_type,
+          media_url: fallbackMediaUrl,
+          image_url: fallbackMediaUrl,
+          video_url: reportData.media_type === "video" ? fallbackMediaUrl : null,
+        },
         ...(aiValidationIssues
           ? { validation_issues: aiValidationIssues }
           : {}),
@@ -309,7 +404,8 @@ export const supportExistingReport = async (request, reply) => {
 export const getAllReportsController = async (request, reply) => {
   try {
     const reports = await getAllReports();
-    return reply.status(200).send({ success: true, reports });
+    const reportsWithUrls = await attachMediaUrls(reports, request.server.config);
+    return reply.status(200).send({ success: true, reports: reportsWithUrls });
   } catch (error) {
     request.log.error(error);
     return reply.status(500).send({
@@ -330,7 +426,8 @@ export const getReportsByUser = async (request, reply) => {
     }
 
     const reports = await getReportsByUserId(userIdResult.data);
-    return reply.status(200).send({ success: true, reports });
+    const reportsWithUrls = await attachMediaUrls(reports, request.server.config);
+    return reply.status(200).send({ success: true, reports: reportsWithUrls });
   } catch (error) {
     request.log.error(error);
     return reply.status(500).send({
@@ -351,7 +448,8 @@ export const getReportsByStatus = async (request, reply) => {
     }
 
     const reports = await getReportsByStatusDao(statusResult.data);
-    return reply.status(200).send({ success: true, reports });
+    const reportsWithUrls = await attachMediaUrls(reports, request.server.config);
+    return reply.status(200).send({ success: true, reports: reportsWithUrls });
   } catch (error) {
     request.log.error(error);
     return reply.status(500).send({

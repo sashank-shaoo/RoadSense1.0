@@ -9,6 +9,7 @@
   "scripts": {
     "start": "node Server.js",
     "seed": "node --env-file=.env src/db/seed.js",
+    "migrate": "node --env-file=.env src/db/migrate.js",
     "test": "npm run lint && npm run unit-test",
     "lint": "eslint .",
     "unit-test": "node --test"

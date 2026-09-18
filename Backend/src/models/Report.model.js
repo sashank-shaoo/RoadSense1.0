@@ -5,6 +5,12 @@ export const reportSchema = {
   fields: {
     id: { type: "UUID", primaryKey: true, default: "gen_random_uuid()" },
     user_id: { type: "UUID", required: true, references: "users(id)" },
+    media_type: {
+      type: "VARCHAR(20)",
+      required: true,
+      default: "image",
+      enum: ["image", "video"],
+    },
     image_mime_type: { type: "VARCHAR(100)", required: true },
     original_filename: { type: "VARCHAR(255)", required: true },
     description: { type: "TEXT", default: null },
@@ -31,8 +37,10 @@ export const reportSchema = {
     CREATE TABLE IF NOT EXISTS reports (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      media_type VARCHAR(20) NOT NULL DEFAULT 'image'
+        CHECK (media_type IN ('image', 'video')),
       image_mime_type VARCHAR(100) NOT NULL
-        CHECK (image_mime_type LIKE 'image/%'),
+        CHECK (image_mime_type LIKE 'image/%' OR image_mime_type LIKE 'video/%'),
       original_filename VARCHAR(255) NOT NULL,
       description TEXT,
       s3_object_key TEXT NOT NULL UNIQUE,
@@ -69,6 +77,12 @@ export const reportSchema = {
 
     ALTER TABLE reports
       ADD COLUMN IF NOT EXISTS description TEXT;
+
+    ALTER TABLE reports
+      ADD COLUMN IF NOT EXISTS media_type VARCHAR(20) NOT NULL DEFAULT 'image';
+
+    ALTER TABLE reports
+      DROP CONSTRAINT IF EXISTS reports_image_mime_type_check;
 
     ALTER TABLE reports
       ALTER COLUMN raw_ai_response TYPE JSON

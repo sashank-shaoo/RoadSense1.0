@@ -1,0 +1,85 @@
+.mapWrapper {
+  width: 100%;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+}
+
+.map {
+  width: 100%;
+  height: 100%;
+  background: #0b1120;
+}
+
+.popupContent {
+  min-width: 180px;
+}
+
+.popupHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.popupSeverity {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.popupScore {
+  font-size: 0.72rem;
+  color: #94a3b8;
+  font-family: var(--font-mono);
+}
+
+.popupDesc {
+  font-size: 0.8rem;
+  color: #cbd5e1;
+  margin-bottom: 8px;
+  line-height: 1.4;
+  max-width: 200px;
+  white-space: normal;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.popupMeta {
+  display: flex;
+  gap: 10px;
+  font-size: 0.72rem;
+  color: #64748b;
+  margin-bottom: 6px;
+}
+
+.popupMeta span {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.popupStatus {
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.popupBtn {
+  background: rgba(6, 182, 212, 0.15);
+  border: 1px solid rgba(6, 182, 212, 0.3);
+  color: #06b6d4;
+  padding: 5px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 600;
+  transition: all 0.15s;
+  width: 100%;
+}
+.popupBtn:hover {
+  background: rgba(6, 182, 212, 0.25);
+}

@@ -4,30 +4,33 @@ export const createReport = async (reportData) => {
   return await sql.begin(async (transaction) => {
     const text = `
       INSERT INTO reports (
-      user_id, image_mime_type, original_filename, description, s3_object_key, file_size_bytes, location
+        user_id, media_type, image_mime_type, original_filename, description, s3_object_key, file_size_bytes, location
       )
-      VALUES ($1, $2, $3, $4, $5, $6, ST_SetSRID(ST_MakePoint($8, $7), 4326)::geography)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, ST_SetSRID(ST_MakePoint($9, $8), 4326)::geography)
       RETURNING
-      id,
-      user_id,
-      image_mime_type,
-      original_filename,
-      description,
-      file_size_bytes,
-      ST_Y(location::geometry) AS latitude,
-      ST_X(location::geometry) AS longitude,
-      json_build_array(ST_X(location::geometry), ST_Y(location::geometry)) AS coordinates,
-      status,
-      detection_count,
-      highest_severity,
-      damage_score,
-      raw_ai_response,
-      created_at,
-      support_count;
+        id,
+        user_id,
+        media_type,
+        image_mime_type,
+        original_filename,
+        description,
+        s3_object_key,
+        file_size_bytes,
+        ST_Y(location::geometry) AS latitude,
+        ST_X(location::geometry) AS longitude,
+        json_build_array(ST_X(location::geometry), ST_Y(location::geometry)) AS coordinates,
+        status,
+        detection_count,
+        highest_severity,
+        damage_score,
+        raw_ai_response,
+        created_at,
+        support_count;
     `;
 
     const values = [
       reportData.user_id,
+      reportData.media_type || (reportData.image_mime_type?.startsWith("video/") ? "video" : "image"),
       reportData.image_mime_type,
       reportData.original_filename,
       reportData.description,
@@ -55,9 +58,11 @@ export const findNearbyReport = async (location, radiusMeters = 20) => {
     SELECT
       id,
       user_id,
+      media_type,
       image_mime_type,
       original_filename,
       description,
+      s3_object_key,
       file_size_bytes,
       ST_Y(location::geometry) AS latitude,
       ST_X(location::geometry) AS longitude,
@@ -155,9 +160,11 @@ export const findReportById = async (reportId, userId) => {
     SELECT
       id,
       user_id,
+      media_type,
       image_mime_type,
       original_filename,
       description,
+      s3_object_key,
       file_size_bytes,
       ST_Y(location::geometry) AS latitude,
       ST_X(location::geometry) AS longitude,
@@ -182,9 +189,11 @@ export const getReportsByUserId = async (userId) => {
     SELECT
       id,
       user_id,
+      media_type,
       image_mime_type,
       original_filename,
       description,
+      s3_object_key,
       file_size_bytes,
       ST_Y(location::geometry) AS latitude,
       ST_X(location::geometry) AS longitude,
@@ -209,9 +218,11 @@ export const getAllReports = async () => {
     SELECT
       id,
       user_id,
+      media_type,
       image_mime_type,
       original_filename,
       description,
+      s3_object_key,
       file_size_bytes,
       ST_Y(location::geometry) AS latitude,
       ST_X(location::geometry) AS longitude,
@@ -235,9 +246,11 @@ export const getReportsByStatus = async (status) => {
     SELECT
       id,
       user_id,
+      media_type,
       image_mime_type,
       original_filename,
       description,
+      s3_object_key,
       file_size_bytes,
       ST_Y(location::geometry) AS latitude,
       ST_X(location::geometry) AS longitude,
@@ -269,6 +282,7 @@ export const completeReport = async (reportId, userId, aiResult) => {
     RETURNING
       id,
       user_id,
+      media_type,
       image_mime_type,
       original_filename,
       description,
@@ -308,6 +322,7 @@ export const updateReportWorkStatus = async (reportId, status) => {
     RETURNING
       id,
       user_id,
+      media_type,
       image_mime_type,
       original_filename,
       description,

@@ -6,7 +6,14 @@ export const reportLocationSchema = z.object({
 });
 
 export const reportCreateSchema = z.object({
-  image_mime_type: z.enum(["image/jpeg", "image/png", "image/webp"]),
+  media_type: z.enum(["image", "video"]).default("image"),
+  image_mime_type: z
+    .string()
+    .trim()
+    .refine(
+      (m) => m.startsWith("image/") || m.startsWith("video/"),
+      "MIME type must be an image/* or video/*",
+    ),
   original_filename: z.string().trim().min(1).max(255),
   description: z.string().trim().max(2000).nullable(),
   s3_object_key: z.string().trim().min(1),
