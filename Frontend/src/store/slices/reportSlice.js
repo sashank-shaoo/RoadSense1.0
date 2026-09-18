@@ -1,5 +1,4 @@
 import { createSlice } from '@reduxjs/toolkit';
-import { INITIAL_MOCK_REPORTS } from '../../api/mockData.js';
 
 const initialState = {
   reports: [],

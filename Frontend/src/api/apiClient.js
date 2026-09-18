@@ -1,16 +1,7 @@
-// Central API client with Live Backend & Demo Fallback capability
+// Central API client for RoadSense Backend
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
-export const isDemoModeActive = () => {
-  const saved = localStorage.getItem('roadsense_demo_mode');
-  // Default to false: use real backend services
-  return saved === 'true';
-};
-
-export const setDemoMode = (enabled) => {
-  localStorage.setItem('roadsense_demo_mode', enabled ? 'true' : 'false');
-};
 
 export const getAuthToken = () => {
   return localStorage.getItem('roadsense_auth_token') || null;

@@ -1,5 +1,4 @@
 import { createSlice } from '@reduxjs/toolkit';
-import { INITIAL_MOCK_USERS_LIST, INITIAL_MOCK_WORKER_GROUPS } from '../../api/mockData.js';
 
 const initialState = {
   users: [],

@@ -16,6 +16,25 @@
 
 .imageSection {
   position: relative;
+  background: #000;
+  border-radius: 10px 10px 0 0;
+  overflow: hidden;
+}
+
+.videoWrapper {
+  width: 100%;
+  aspect-ratio: 16/10;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.videoPlayer {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 10px 10px 0 0;
 }
 
 .aiOverlay {

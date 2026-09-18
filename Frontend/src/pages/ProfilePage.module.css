@@ -301,14 +301,16 @@
   background: #000;
 }
 
-.reportThumb img {
+.reportThumb img,
+.reportThumb video {
   width: 100%;
   height: 100%;
   object-fit: cover;
   transition: transform 0.3s;
 }
 
-.reportItem:hover .reportThumb img {
+.reportItem:hover .reportThumb img,
+.reportItem:hover .reportThumb video {
   transform: scale(1.05);
 }
 

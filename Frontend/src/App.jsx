@@ -1,6 +1,5 @@
 import { Routes, Route } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import DemoBanner from './components/common/DemoBanner.jsx';
 import Navbar from './components/common/Navbar.jsx';
 import Toast from './components/common/Toast.jsx';
 
@@ -23,9 +22,6 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      {/* Sticky Demo/Live Banner */}
-      <DemoBanner />
-
       {/* Global Navbar */}
       <Navbar />
 

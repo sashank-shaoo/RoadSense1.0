@@ -1,78 +1,94 @@
+/* ============================================================
+   HomePage — Neo-Brutalist + Swiss Typography Layout
+   ============================================================ */
+
 .page {
   min-height: 100vh;
+  background: var(--bg-main);
 }
 
+/* ============================================================
+   HERO
+   ============================================================ */
 .hero {
-  position: relative;
-  max-width: 1240px;
+  max-width: 1280px;
   margin: 0 auto;
-  padding: 60px 24px 40px;
+  padding: 64px 32px 48px;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 40px;
+  gap: 56px;
   align-items: center;
+  position: relative;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 960px) {
   .hero {
     grid-template-columns: 1fr;
-    padding-top: 30px;
+    padding-top: 40px;
+    gap: 36px;
   }
 }
 
-.heroGradient {
-  position: absolute;
-  top: -100px;
-  left: 20%;
-  width: 500px;
-  height: 500px;
-  background: radial-gradient(circle, rgba(6, 182, 212, 0.12) 0%, rgba(59, 130, 246, 0.05) 50%, transparent 70%);
-  filter: blur(60px);
-  pointer-events: none;
-  z-index: 0;
-}
+/* Remove old glow */
+.heroGradient { display: none; }
 
 .heroContent {
   position: relative;
   z-index: 1;
 }
 
+/* Badge — Swiss label strip */
 .heroBadge {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 14px;
-  border-radius: 9999px;
-  background: rgba(245, 158, 11, 0.12);
-  border: 1px solid rgba(245, 158, 11, 0.3);
-  color: #fbbf24;
-  font-size: 0.8rem;
-  font-weight: 600;
-  margin-bottom: 20px;
-  letter-spacing: 0.02em;
+  padding: 5px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--yellow-tint);
+  border: 1.5px solid var(--yellow-border);
+  color: var(--yellow-dark);
+  font-size: 0.72rem;
+  font-weight: 700;
+  margin-bottom: 28px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-family: var(--font-mono);
 }
 
+/* Title */
 .heroTitle {
-  font-size: clamp(2.4rem, 5vw, 3.6rem);
-  font-weight: 800;
-  line-height: 1.1;
-  letter-spacing: -0.03em;
-  margin-bottom: 16px;
-  color: var(--text-primary);
+  font-size: clamp(2.6rem, 5.5vw, 4.2rem);
+  font-weight: 700;
+  line-height: 1.0;
+  letter-spacing: -0.04em;
+  margin-bottom: 20px;
+  color: var(--ink-black);
 }
 
+/* Accent — yellow underline style instead of gradient text */
 .heroAccent {
-  background: linear-gradient(135deg, #38bdf8 0%, #818cf8 50%, #c084fc 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  position: relative;
+  display: inline-block;
+  color: var(--ink-black);
+}
+.heroAccent::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  left: 0;
+  width: 100%;
+  height: 10px;
+  background: var(--yellow-main);
+  z-index: -1;
+  opacity: 0.7;
 }
 
 .heroSubtitle {
-  font-size: 1.1rem;
-  line-height: 1.6;
-  color: var(--text-secondary);
-  margin-bottom: 28px;
-  max-width: 480px;
+  font-size: 1rem;
+  line-height: 1.65;
+  color: var(--ink-mid);
+  margin-bottom: 36px;
+  max-width: 440px;
 }
 
 .heroCta {
@@ -81,52 +97,82 @@
   flex-wrap: wrap;
 }
 
+/* Map wrapper */
 .heroMapWrapper {
   position: relative;
   z-index: 1;
+  pointer-events: none;
+  user-select: none;
 }
 
+/* Map legend */
 .mapLegend {
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin-top: 10px;
-  padding: 8px 14px;
-  background: rgba(15, 23, 42, 0.6);
-  backdrop-filter: blur(8px);
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  gap: 18px;
+  margin-top: 12px;
+  padding: 8px 16px;
+  background: var(--bg-card);
+  border: 1.5px solid var(--gray-border);
+  border-radius: var(--radius-sm);
   width: fit-content;
+  box-shadow: var(--shadow-card);
 }
 
 .legendItem {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 0.75rem;
-  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-family: var(--font-mono);
+  color: var(--ink-mid);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .legendDot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
+  border: 1.5px solid rgba(0,0,0,0.2);
 }
 
+/* ============================================================
+   SECTION CONTAINER
+   ============================================================ */
 .container {
-  max-width: 1240px;
+  max-width: 1280px;
   margin: 0 auto;
-  padding: 0 24px;
+  padding: 0 32px;
 }
 
+/* ============================================================
+   STATS
+   ============================================================ */
 .stats {
-  padding: 40px 0;
+  padding: 0 0 56px;
+  border-top: var(--border-weight) solid var(--gray-rule);
+}
+
+/* Swiss rule accent before stats */
+.stats::before {
+  content: '';
+  display: block;
+  height: 4px;
+  max-width: 1280px;
+  margin: 0 auto;
+  background: var(--yellow-main);
 }
 
 .statsGrid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
+  gap: 0;
+  border: var(--border-weight) solid var(--ink-black);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+  margin-top: 40px;
 }
 
 @media (max-width: 768px) {
@@ -135,73 +181,125 @@
   }
 }
 
+/* Neo-brutalist stat cell — inner borders via box-shadow trick */
 .statCard {
-  padding: 20px;
+  padding: 28px 24px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 8px;
+  gap: 10px;
+  background: var(--bg-card);
+  border: none;
+  border-right: var(--border-weight) solid var(--gray-rule);
+  border-radius: 0;
+  box-shadow: none;
+  transition: background 0.18s;
+}
+
+.statCard:last-child { border-right: none; }
+
+.statCard:hover {
+  background: var(--yellow-tint);
+  transform: none;
+  box-shadow: none;
 }
 
 .statIcon {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
+  border: 1.5px solid;
   margin-bottom: 4px;
 }
 
 .statVal {
-  font-size: 1.8rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  color: var(--text-primary);
+  font-size: 2rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  letter-spacing: -0.04em;
+  color: var(--ink-black);
 }
 
 .statLabel {
-  font-size: 0.82rem;
-  color: var(--text-secondary);
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
+/* ============================================================
+   RECENT DAMAGE REPORTS
+   ============================================================ */
 .activity {
-  padding: 40px 0 60px;
+  padding: 56px 0;
 }
 
 .sectionHeader {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
+  padding-bottom: 14px;
+  border-bottom: var(--border-weight) solid var(--ink-black);
 }
 
 .sectionHeader h2 {
-  font-size: 1.5rem;
+  font-size: 1.35rem;
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
+  color: var(--ink-black);
+  text-transform: uppercase;
 }
 
 .reportList {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 0;
+  border: var(--border-weight) solid var(--ink-black);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
 }
 
 .empty {
-  padding: 30px;
+  padding: 40px;
   text-align: center;
-  color: var(--text-muted);
-  border: 1px dashed rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
+  color: var(--ink-muted);
+  border: var(--border-weight) dashed var(--gray-border);
+  border-radius: var(--radius-md);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  background: var(--bg-surface);
 }
 
+/* Report row — zebra striping + thick inner dividers */
 .reportCard {
   padding: 14px 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   cursor: pointer;
+  background: var(--bg-card);
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  border-bottom: 1.5px solid var(--gray-rule);
+  transition: background 0.15s;
+}
+
+.reportCard:last-child { border-bottom: none; }
+
+.reportCard:nth-child(even) {
+  background: var(--bg-surface);
+}
+
+.reportCard:hover {
+  background: var(--yellow-tint) !important;
+  transform: none;
 }
 
 .reportCardLeft {
@@ -214,22 +312,24 @@
   width: 10px;
   height: 10px;
   border-radius: 50%;
+  border: 2px solid rgba(0,0,0,0.2);
   flex-shrink: 0;
 }
 
 .reportTitle {
   font-weight: 600;
-  font-size: 0.95rem;
-  color: var(--text-primary);
-  margin-bottom: 4px;
+  font-size: 0.9rem;
+  color: var(--ink-black);
+  margin-bottom: 3px;
+  font-family: var(--font-mono);
 }
 
 .reportMeta {
   display: flex;
   align-items: center;
   gap: 14px;
-  font-size: 0.78rem;
-  color: var(--text-muted);
+  font-size: 0.73rem;
+  color: var(--ink-muted);
 }
 
 .reportMeta span {
@@ -248,63 +348,101 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 0.8rem;
-  color: var(--text-secondary);
+  font-size: 0.78rem;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
 }
 
 .score {
   font-family: var(--font-mono);
   font-weight: 700;
-  font-size: 1.05rem;
+  font-size: 1rem;
+  min-width: 36px;
+  text-align: right;
+  color: var(--ink-black);
 }
 
+/* ============================================================
+   FEATURES — "How RoadSense Works"
+   ============================================================ */
 .features {
-  padding: 40px 0 80px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 56px 0 80px;
+  border-top: var(--border-weight) solid var(--gray-rule);
 }
 
 .featureGrid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
+  gap: 0;
+  border: var(--border-weight) solid var(--ink-black);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
 }
 
-@media (max-width: 900px) {
-  .featureGrid {
-    grid-template-columns: repeat(2, 1fr);
-  }
+@media (max-width: 960px) {
+  .featureGrid { grid-template-columns: repeat(2, 1fr); }
 }
-
-@media (max-width: 500px) {
-  .featureGrid {
-    grid-template-columns: 1fr;
-  }
+@media (max-width: 520px) {
+  .featureGrid { grid-template-columns: 1fr; }
 }
 
 .featureCard {
-  padding: 24px;
+  padding: 28px 24px;
   display: flex;
   flex-direction: column;
   gap: 12px;
+  background: var(--bg-card);
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  border-right: var(--border-weight) solid var(--gray-rule);
+  transition: background 0.18s;
+}
+
+.featureCard:last-child { border-right: none; }
+
+.featureCard:nth-child(even) {
+  background: var(--bg-surface);
+}
+
+.featureCard:hover {
+  background: var(--yellow-tint);
+  transform: none;
+}
+
+/* Step number — Swiss typographic detail */
+.featureCard::before {
+  content: attr(data-step);
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--ink-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 4px;
 }
 
 .featureIcon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
+  border: 1.5px solid;
 }
 
 .featureTitle {
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 700;
-  color: var(--text-primary);
+  color: var(--ink-black);
+  letter-spacing: -0.02em;
 }
 
 .featureDesc {
-  font-size: 0.88rem;
-  line-height: 1.5;
-  color: var(--text-secondary);
+  font-size: 0.84rem;
+  line-height: 1.55;
+  color: var(--ink-mid);
 }

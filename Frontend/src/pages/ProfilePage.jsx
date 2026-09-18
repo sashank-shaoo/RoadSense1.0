@@ -38,9 +38,11 @@ export default function ProfilePage() {
           dispatch(updateCreditPoints(profile.credit_points));
         }
 
-        const reportsRes = await reportApi.getMyReports(user?.id || 'demo_user');
-        if (reportsRes?.reports) {
-          setMyReports(reportsRes.reports);
+        if (user?.id) {
+          const reportsRes = await reportApi.getMyReports(user.id);
+          if (reportsRes?.reports) {
+            setMyReports(reportsRes.reports);
+          }
         }
       } catch (err) {
         console.error('Failed to load profile reports:', err);
@@ -209,10 +211,18 @@ export default function ProfilePage() {
                   </div>
 
                   <div className={styles.reportThumb}>
-                    <img 
-                      src={report.image_url || 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?w=500&auto=format&fit=crop&q=60'} 
-                      alt="Damage" 
-                    />
+                    {report.media_type === 'video' || report.video_url ? (
+                      <video 
+                        src={report.video_url || report.media_url || report.image_url} 
+                        muted 
+                        preload="metadata"
+                      />
+                    ) : (
+                      <img 
+                        src={report.image_url || report.media_url || 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?w=500&auto=format&fit=crop&q=60'} 
+                        alt="Damage" 
+                      />
+                    )}
                   </div>
 
                   <h4 className={styles.reportItemTitle}>{report.description || 'Pothole defect'}</h4>

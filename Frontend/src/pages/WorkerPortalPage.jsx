@@ -160,10 +160,18 @@ export default function WorkerPortalPage() {
                       dispatch(setActiveReport(report));
                       dispatch(openModal('reportDetail'));
                     }}>
-                      <img 
-                        src={report.image_url || 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?w=500&auto=format&fit=crop&q=60'} 
-                        alt="Road damage" 
-                      />
+                      {report.media_type === 'video' || report.video_url ? (
+                        <video 
+                          src={report.video_url || report.media_url || report.image_url} 
+                          muted 
+                          preload="metadata"
+                        />
+                      ) : (
+                        <img 
+                          src={report.image_url || report.media_url || 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?w=500&auto=format&fit=crop&q=60'} 
+                          alt="Road damage" 
+                        />
+                      )}
                       <span className={styles.inspectHint}>Inspect AI Canvas</span>
                     </div>
 

@@ -91,6 +91,13 @@ export default function BoundingBoxCanvas({ imageUrl, detections = [], width = 6
         alt="Road damage"
         className={styles.image}
         crossOrigin="anonymous"
+        onError={(e) => {
+          // If S3 CORS blocks anonymous crossOrigin, retry without crossOrigin
+          if (e.currentTarget.crossOrigin) {
+            e.currentTarget.removeAttribute('crossorigin');
+            e.currentTarget.src = imageUrl;
+          }
+        }}
         onLoad={() => {
           const canvas = canvasRef.current;
           const img = imgRef.current;

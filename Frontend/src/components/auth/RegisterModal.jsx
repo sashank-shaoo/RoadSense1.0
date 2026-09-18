@@ -23,9 +23,7 @@ export default function RegisterModal() {
       dispatch(setPendingVerification({ email: form.email }));
       dispatch(addToast({
         type: 'success',
-        message: res.demo_otp
-          ? `Demo OTP: ${res.demo_otp} — enter it to verify`
-          : 'OTP sent! Check your email.',
+        message: res.message || 'OTP sent! Check your email.',
         duration: 8000,
       }));
       dispatch(openModal('otp'));

@@ -48,7 +48,7 @@ export default function CreateReportModal() {
         setGeoLoading(false);
       },
       () => {
-        // Fallback demo coords (Bhubaneswar)
+        // Fallback default city coords (Bhubaneswar)
         setLocation({ latitude: '20.2961', longitude: '85.8245' });
         setGeoLoading(false);
         dispatch(addToast({ type: 'info', message: 'Location unavailable, using default coords' }));

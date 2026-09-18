@@ -13,7 +13,7 @@ import L from 'leaflet';
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: null,
-  iconUrl: null,
+  iconUrl: null, 
   shadowUrl: null,
 });
 
@@ -34,11 +34,11 @@ function SetViewOnReports({ reports }) {
   return null;
 }
 
-export default function DamageMap({ reports = [], height = '100%', showPopup = true }) {
+export default function DamageMap({ reports = [], height = '100%', showPopup = true, interactive = true }) {
   const dispatch = useDispatch();
 
   const handleMarkerClick = (report) => {
-    if (showPopup) {
+    if (showPopup && interactive) {
       dispatch(setActiveReport(report));
       dispatch(openModal('reportDetail'));
     }
@@ -50,7 +50,13 @@ export default function DamageMap({ reports = [], height = '100%', showPopup = t
         center={BHUBANESWAR_CENTER}
         zoom={12}
         className={styles.map}
-        zoomControl={true}
+        zoomControl={interactive}
+        dragging={interactive}
+        scrollWheelZoom={interactive}
+        doubleClickZoom={interactive}
+        touchZoom={interactive}
+        boxZoom={interactive}
+        keyboard={interactive}
         attributionControl={false}
       >
         <TileLayer
@@ -84,6 +90,23 @@ export default function DamageMap({ reports = [], height = '100%', showPopup = t
             >
               <Popup className={styles.popup}>
                 <div className={styles.popupContent}>
+                  {/* Media Thumbnail */}
+                  {(report.image_url || report.media_url || report.video_url) && (
+                    <div className={styles.popupThumb}>
+                      {report.media_type === 'video' || report.video_url ? (
+                        <video
+                          src={report.video_url || report.media_url}
+                          muted
+                          preload="metadata"
+                        />
+                      ) : (
+                        <img
+                          src={report.image_url || report.media_url}
+                          alt={report.description || 'Road damage'}
+                        />
+                      )}
+                    </div>
+                  )}
                   <div className={styles.popupHeader}>
                     <span className={styles.popupSeverity} style={{ color }}>
                       ● {level.toUpperCase()}

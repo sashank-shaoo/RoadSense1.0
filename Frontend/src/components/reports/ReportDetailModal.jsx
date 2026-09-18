@@ -66,12 +66,23 @@ export default function ReportDetailModal() {
         </div>
 
         <div className="modal-body" style={{ padding: 0 }}>
-          {/* AI Bounding Box View */}
+          {/* AI Media / Bounding Box View */}
           <div className={styles.imageSection}>
-            <BoundingBoxCanvas
-              imageUrl={report.image_url || report.image_url}
-              detections={detections}
-            />
+            {report.media_type === 'video' || report.video_url ? (
+              <div className={styles.videoWrapper}>
+                <video
+                  src={report.video_url || report.media_url || report.image_url}
+                  controls
+                  playsInline
+                  className={styles.videoPlayer}
+                />
+              </div>
+            ) : (
+              <BoundingBoxCanvas
+                imageUrl={report.image_url || report.media_url}
+                detections={detections}
+              />
+            )}
             <div className={styles.aiOverlay}>
               <span className={styles.aiBadge}><Cpu size={11} /> AI Analyzed</span>
               {report.raw_ai_response?.model_version && (

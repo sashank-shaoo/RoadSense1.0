@@ -1,8 +1,6 @@
 import { createSlice } from '@reduxjs/toolkit';
-import { isDemoModeActive, setDemoMode } from '../../api/apiClient.js';
 
 const initialState = {
-  isDemoMode: isDemoModeActive(),
   toasts: [],
   activeModal: null, // 'login' | 'register' | 'otp' | 'createReport' | 'reportDetail'
   isNavOpen: false,
@@ -14,14 +12,6 @@ const uiSlice = createSlice({
   name: 'ui',
   initialState,
   reducers: {
-    toggleDemoMode(state) {
-      state.isDemoMode = !state.isDemoMode;
-      setDemoMode(state.isDemoMode);
-    },
-    setDemoModeState(state, action) {
-      state.isDemoMode = action.payload;
-      setDemoMode(action.payload);
-    },
     openModal(state, action) {
       state.activeModal = action.payload;
     },
@@ -45,8 +35,6 @@ const uiSlice = createSlice({
 });
 
 export const {
-  toggleDemoMode,
-  setDemoModeState,
   openModal,
   closeModal,
   addToast,

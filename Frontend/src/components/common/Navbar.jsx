@@ -45,7 +45,6 @@ export default function Navbar() {
             <MapPin size={18} />
           </div>
           <span className={styles.logoText}>Road<span className={styles.logoAccent}>Sense</span></span>
-          <span className={styles.logoBadge}>AI</span>
         </Link>
 
         {/* Desktop Nav Links */}

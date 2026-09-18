@@ -11,7 +11,6 @@ import styles from './ExplorePage.module.css';
 export default function ExplorePage() {
   const dispatch = useDispatch();
   const { reports } = useSelector((s) => s.reports);
-  const isDemoMode = useSelector((s) => s.ui.isDemoMode);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSeverity, setSelectedSeverity] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
@@ -31,7 +30,7 @@ export default function ExplorePage() {
 
   useEffect(() => {
     fetchReports();
-  }, [isDemoMode]);
+  }, []);
 
   const filteredReports = useMemo(() => {
     return reports.filter((r) => {
@@ -139,6 +138,27 @@ export default function ExplorePage() {
                       Score: {formatScore(report.damage_score, 1)}
                     </span>
                   </div>
+
+                  {/* Media Thumbnail */}
+                  {(report.image_url || report.media_url || report.video_url) && (
+                    <div className={styles.itemThumb}>
+                      {report.media_type === 'video' || report.video_url ? (
+                        <video
+                          src={report.video_url || report.media_url}
+                          muted
+                          preload="metadata"
+                        />
+                      ) : (
+                        <img
+                          src={report.image_url || report.media_url}
+                          alt={report.description || 'Road damage'}
+                        />
+                      )}
+                      {report.media_type === 'video' && (
+                        <span className={styles.videoTag}>▶ Video</span>
+                      )}
+                    </div>
+                  )}
 
                   <h4 className={styles.itemTitle}>{report.description || 'Road surface damage detected'}</h4>
                   
