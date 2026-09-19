@@ -5,7 +5,11 @@ import {
   findWorkerGroupById,
   getAllWorkerGroups,
   updateWorkerGroupCredentials,
+  getGroupMembers,
+  addMemberToGroup,
+  removeMemberFromGroup,
 } from "../dao/WorkerDao.js";
+import { findWorkerById, getWorkers } from "../dao/UserDao.js";
 import {
   workerGroupCreateSchema,
   workerGroupCredentialsSchema,
@@ -30,10 +34,10 @@ export const requireAdmin = async (request, reply) => {
   }
 };
 export const requireWorkerGroup = async (request, reply) => {
-  if (request.user?.role !== "WORKER_GROUP") {
+  if (request.user?.role !== "WORKER_GROUP" && request.user?.role !== "WORKER") {
     return reply.status(403).send({
       success: false,
-      error: "Worker group authentication required",
+      error: "Worker authentication required",
     });
   }
 };
@@ -146,7 +150,31 @@ export const logoutWorkerGroup = async (request, reply) => {
 
 export const getWorkerGroupProfile = async (request, reply) => {
   try {
-    const workerGroup = await findWorkerGroupById(request.user.id);
+    const role = request.user.role;
+    let workerGroup;
+    let members = [];
+
+    if (role === "WORKER_GROUP") {
+      workerGroup = await findWorkerGroupById(request.user.id);
+      if (workerGroup) {
+        members = await getGroupMembers(request.user.id);
+      }
+    } else if (role === "WORKER") {
+      // Individual worker: return their profile and any group they belong to
+      const worker = await findWorkerById(request.user.id);
+      return reply.status(200).send({
+        success: true,
+        worker: worker,
+        worker_group: {
+          id: worker?.id,
+          name: worker?.name,
+          email: worker?.email,
+          role: "WORKER",
+        },
+        members: [],
+      });
+    }
+
     if (!workerGroup) {
       return reply.status(404).send({
         success: false,
@@ -156,13 +184,105 @@ export const getWorkerGroupProfile = async (request, reply) => {
 
     return reply.status(200).send({
       success: true,
-      worker_group: workerGroup,
+      worker_group: {
+        ...workerGroup,
+        leader_name: workerGroup.name,
+      },
+      members,
     });
   } catch (error) {
     request.log.error(error);
     return reply.status(500).send({
       success: false,
       error: "Failed to fetch worker group profile",
+    });
+  }
+};
+
+export const addMemberController = async (request, reply) => {
+  try {
+    const groupId = request.user.id;
+    const { worker_id: workerId } = request.body || {};
+
+    if (!workerId) {
+      return reply.status(400).send({
+        success: false,
+        error: "worker_id is required",
+      });
+    }
+
+    const worker = await findWorkerById(workerId);
+    if (!worker) {
+      return reply.status(404).send({
+        success: false,
+        error: "Worker member not found in users directory",
+      });
+    }
+
+    await addMemberToGroup(groupId, workerId);
+    const members = await getGroupMembers(groupId);
+
+    return reply.status(200).send({
+      success: true,
+      message: `Member ${worker.name} successfully added to group`,
+      members,
+    });
+  } catch (error) {
+    request.log.error(error);
+    return reply.status(500).send({
+      success: false,
+      error: "Failed to add member to worker group",
+    });
+  }
+};
+
+export const removeMemberController = async (request, reply) => {
+  try {
+    const groupId = request.user.id;
+    const { workerId } = request.params;
+
+    if (!workerId) {
+      return reply.status(400).send({
+        success: false,
+        error: "workerId parameter is required",
+      });
+    }
+
+    await removeMemberFromGroup(groupId, workerId);
+    const members = await getGroupMembers(groupId);
+
+    return reply.status(200).send({
+      success: true,
+      message: "Member removed from group",
+      members,
+    });
+  } catch (error) {
+    request.log.error(error);
+    return reply.status(500).send({
+      success: false,
+      error: "Failed to remove member from group",
+    });
+  }
+};
+
+export const getAvailableWorkersController = async (request, reply) => {
+  try {
+    const allWorkers = await getWorkers();
+    const currentMembers = await getGroupMembers(request.user.id);
+    const memberIds = new Set(currentMembers.map((m) => m.id));
+
+    // Return workers who are not yet added to this group
+    const available = allWorkers.filter((w) => !memberIds.has(w.id));
+
+    return reply.status(200).send({
+      success: true,
+      workers: available,
+    });
+  } catch (error) {
+    request.log.error(error);
+    return reply.status(500).send({
+      success: false,
+      error: "Failed to fetch available workers",
     });
   }
 };

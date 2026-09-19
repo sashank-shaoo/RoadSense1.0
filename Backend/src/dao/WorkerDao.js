@@ -52,3 +52,35 @@ export const updateWorkerGroupCredentials = async (
   );
   return workerGroup;
 };
+
+export const getGroupMembers = async (workerGroupId) => {
+  return await sql.unsafe(
+    `SELECT u.id, u.name, u.email, u.phone, u.role, u.is_active, wgm.joined_at
+     FROM worker_group_members wgm
+     JOIN users u ON u.id = wgm.worker_id
+     WHERE wgm.worker_group_id = $1
+     ORDER BY wgm.joined_at ASC;`,
+    [workerGroupId],
+  );
+};
+
+export const addMemberToGroup = async (workerGroupId, workerId) => {
+  const [member] = await sql.unsafe(
+    `INSERT INTO worker_group_members (worker_group_id, worker_id)
+     VALUES ($1, $2)
+     ON CONFLICT (worker_group_id, worker_id) DO NOTHING
+     RETURNING worker_group_id, worker_id, joined_at;`,
+    [workerGroupId, workerId],
+  );
+  return member;
+};
+
+export const removeMemberFromGroup = async (workerGroupId, workerId) => {
+  await sql.unsafe(
+    `DELETE FROM worker_group_members
+     WHERE worker_group_id = $1 AND worker_id = $2;`,
+    [workerGroupId, workerId],
+  );
+  return { success: true };
+};
+

@@ -26,8 +26,13 @@ export const reportApi = {
   },
 
   async getReportById(reportId) {
-    const res = await this.getAllReports();
-    const found = res.reports?.find((r) => r.id === reportId);
+    const res = await request(`/reports/${reportId}`);
+    if (res?.report) {
+      return { success: true, report: normalizeReport(res.report) };
+    }
+    // fallback: scan all reports
+    const allRes = await this.getAllReports();
+    const found = allRes.reports?.find((r) => r.id === reportId);
     return {
       success: Boolean(found),
       report: found || null,
@@ -73,5 +78,28 @@ export const reportApi = {
       support_count: res.support_count ?? res.supportCount,
       credit_points: res.credit_points ?? res.creditPoints,
     };
+  },
+
+  // ── Bidding ──
+  async placeBid(reportId) {
+    return request(`/reports/${reportId}/bids`, { method: 'POST' });
+  },
+
+  async getBidsForReport(reportId) {
+    const res = await request(`/reports/${reportId}/bids`);
+    return { success: true, bids: res?.data || [] };
+  },
+
+  // ── Worker Status Update ──
+  async updateWorkStatus(reportId, status) {
+    return request(`/reports/${reportId}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    });
+  },
+
+  // Legacy alias used by old WorkerPortalPage code
+  async updateReportStatus(reportId, status) {
+    return this.updateWorkStatus(reportId, status);
   },
 };

@@ -55,11 +55,14 @@ async function runMigration(config = process.env) {
   console.log("  ✅ reports.status constraint expanded");
 
   // ──────────────────────────────────────────────────
+  // ──────────────────────────────────────────────────
   // BLOCK 3 — New lifecycle columns on reports
   // ──────────────────────────────────────────────────
   console.log("\n📋 Block 3: Adding lifecycle columns to reports...");
 
-  await sql.unsafe(`ALTER TABLE reports ADD COLUMN IF NOT EXISTS assigned_worker_id UUID REFERENCES users(id) ON DELETE SET NULL;`);
+  await sql.unsafe(`ALTER TABLE reports ADD COLUMN IF NOT EXISTS assigned_worker_id UUID;`);
+  // Remove FK constraint on assigned_worker_id if present so it can reference either users or worker_groups
+  await sql.unsafe(`ALTER TABLE reports DROP CONSTRAINT IF EXISTS reports_assigned_worker_id_fkey;`);
   await sql.unsafe(`ALTER TABLE reports ADD COLUMN IF NOT EXISTS bidding_started_at TIMESTAMPTZ;`);
   await sql.unsafe(`ALTER TABLE reports ADD COLUMN IF NOT EXISTS bidding_ends_at TIMESTAMPTZ;`);
   await sql.unsafe(`ALTER TABLE reports ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ;`);
@@ -106,13 +109,15 @@ async function runMigration(config = process.env) {
     CREATE TABLE IF NOT EXISTS bids (
       id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       report_id   UUID NOT NULL REFERENCES reports(id) ON DELETE CASCADE,
-      worker_id   UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      worker_id   UUID NOT NULL,
       status      VARCHAR(20) NOT NULL DEFAULT 'ACTIVE'
                     CHECK (status IN ('ACTIVE', 'ACCEPTED', 'REJECTED', 'EXPIRED')),
       created_at  TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at  TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
       CONSTRAINT unique_active_bid_per_worker UNIQUE (report_id, worker_id)
     );
+    -- Drop FK on worker_id if it exists from older schema so both users & worker_groups can bid
+    ALTER TABLE bids DROP CONSTRAINT IF EXISTS bids_worker_id_fkey;
     CREATE INDEX IF NOT EXISTS bids_report_id_idx ON bids (report_id);
     CREATE INDEX IF NOT EXISTS bids_worker_id_idx ON bids (worker_id);
     CREATE INDEX IF NOT EXISTS bids_status_idx ON bids (status);
@@ -147,7 +152,7 @@ async function runMigration(config = process.env) {
     CREATE TABLE IF NOT EXISTS admin_issues (
       id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       report_id   UUID REFERENCES reports(id) ON DELETE SET NULL,
-      worker_id   UUID REFERENCES users(id) ON DELETE SET NULL,
+      worker_id   UUID,
       user_id     UUID REFERENCES users(id) ON DELETE SET NULL,
       type        VARCHAR(50) NOT NULL DEFAULT 'WORK_NOT_COMPLETED',
       description TEXT,
@@ -156,6 +161,7 @@ async function runMigration(config = process.env) {
       created_at  TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
       resolved_at TIMESTAMPTZ
     );
+    ALTER TABLE admin_issues DROP CONSTRAINT IF EXISTS admin_issues_worker_id_fkey;
     CREATE INDEX IF NOT EXISTS admin_issues_status_idx ON admin_issues (status);
     CREATE INDEX IF NOT EXISTS admin_issues_report_id_idx ON admin_issues (report_id);
   `);

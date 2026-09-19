@@ -18,6 +18,7 @@ import CreateReportPage from './pages/CreateReportPage.jsx';
 import InspectReportPage from './pages/InspectReportPage.jsx';
 import ProfilePage from './pages/ProfilePage.jsx';
 import WorkerPortalPage from './pages/WorkerPortalPage.jsx';
+import WorkerProfilePage from './pages/WorkerProfilePage.jsx';
 import AdminPortalPage from './pages/AdminPortalPage.jsx';
 
 export default function App() {
@@ -38,6 +39,7 @@ export default function App() {
           <Route path="/report" element={<CreateReportPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/worker" element={<WorkerPortalPage />} />
+          <Route path="/worker/profile" element={<WorkerProfilePage />} />
           <Route path="/admin" element={<AdminPortalPage />} />
           <Route path="*" element={<HomePage />} />
         </Routes>

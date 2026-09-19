@@ -4,6 +4,9 @@ import {
   logoutWorkerGroup,
   requireAdmin,
   requireWorkerGroup,
+  addMemberController,
+  removeMemberController,
+  getAvailableWorkersController,
 } from "../controllers/Worker.controller.js";
 import { authenticate } from "../middlewares/auth.middleware.js";
 import { strictAuthRateLimitConfig } from "../services/rateLimitService.js";
@@ -20,6 +23,21 @@ const workerRoutes = async (fastify) => {
     "/profile",
     { preHandler: [authenticate, requireWorkerGroup] },
     getWorkerGroupProfile,
+  );
+  fastify.get(
+    "/available-workers",
+    { preHandler: [authenticate, requireWorkerGroup] },
+    getAvailableWorkersController,
+  );
+  fastify.post(
+    "/members",
+    { preHandler: [authenticate, requireWorkerGroup] },
+    addMemberController,
+  );
+  fastify.delete(
+    "/members/:workerId",
+    { preHandler: [authenticate, requireWorkerGroup] },
+    removeMemberController,
   );
 };
 

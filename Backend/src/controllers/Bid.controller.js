@@ -3,24 +3,41 @@ import {
   getBidsForReport as fetchBidsForReport,
 } from "../dao/BidDao.js";
 import { findWorkerById } from "../dao/UserDao.js";
+import { findWorkerGroupById } from "../dao/WorkerDao.js";
 import { bidReportIdSchema } from "../zod/BidSchema.js";
 
 export const requireWorker = async (request, reply) => {
-  if (request.user?.role !== "WORKER") {
+  const role = request.user?.role;
+
+  // Accept both individual WORKERs and WORKER_GROUPs
+  if (role !== "WORKER" && role !== "WORKER_GROUP") {
     return reply.status(403).send({
       success: false,
       error: "Worker authentication required",
     });
   }
 
-  const worker = await findWorkerById(request.user.id);
-  if (!worker || worker.is_active === false) {
-    return reply.status(403).send({
-      success: false,
-      error: "Worker account is inactive or disabled",
-    });
+  // Validate the account is still active (role-specific lookup)
+  if (role === "WORKER") {
+    const worker = await findWorkerById(request.user.id);
+    if (!worker || worker.is_active === false) {
+      return reply.status(403).send({
+        success: false,
+        error: "Worker account is inactive or disabled",
+      });
+    }
+  } else {
+    // WORKER_GROUP — lookup in worker_groups table
+    const group = await findWorkerGroupById(request.user.id);
+    if (!group) {
+      return reply.status(403).send({
+        success: false,
+        error: "Worker group account not found or disabled",
+      });
+    }
   }
 };
+
 
 export const placeBid = async (request, reply) => {
   try {
@@ -89,7 +106,8 @@ export const getBidsForReport = async (request, reply) => {
     const isAuthorized =
       request.user?.role === "ADMIN" ||
       (request.user?.admin && request.user.role === "ADMIN") ||
-      request.user?.role === "WORKER";
+      request.user?.role === "WORKER" ||
+      request.user?.role === "WORKER_GROUP";
 
     if (!isAuthorized) {
       return reply.status(403).send({

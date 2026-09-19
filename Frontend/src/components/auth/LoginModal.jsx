@@ -31,8 +31,22 @@ export default function LoginModal() {
         res = await authApi.loginUser(form);
         dispatch(loginSuccess({ user: res.user, token: res.token, role: 'END_USER' }));
       } else if (role === 'worker') {
-        res = await authApi.loginWorker(form);
-        dispatch(loginSuccess({ user: res.worker_group, token: res.token, role: 'WORKER_GROUP' }));
+        try {
+          res = await authApi.loginWorker(form);
+          dispatch(loginSuccess({ user: res.worker_group, token: res.token, role: 'WORKER_GROUP' }));
+        } catch (workerErr) {
+          // If not in worker_groups, try users login (for individual WORKER accounts created by Admin)
+          try {
+            res = await authApi.loginUser(form);
+            if (res.user?.role === 'WORKER') {
+              dispatch(loginSuccess({ user: res.user, token: res.token, role: 'WORKER' }));
+            } else {
+              throw workerErr;
+            }
+          } catch {
+            throw workerErr;
+          }
+        }
       } else {
         res = await authApi.loginAdmin(form);
         dispatch(loginSuccess({ user: res.admin, token: res.token, role: 'ADMIN' }));

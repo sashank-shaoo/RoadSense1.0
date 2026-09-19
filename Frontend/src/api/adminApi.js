@@ -23,4 +23,36 @@ export const adminApi = {
       body: JSON.stringify(data),
     });
   },
+
+  // ── Individual Worker (WORKER role, not WORKER_GROUP) ──
+  async getWorkers() {
+    return request('/admin/workers');
+  },
+
+  async createWorker(data) {
+    return request('/admin/workers', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  async toggleWorkerActive(workerId, is_active) {
+    return request(`/admin/workers/${workerId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ is_active }),
+    });
+  },
+
+  // ── Issues ──
+  async getIssues(status) {
+    const query = status ? `?status=${status}` : '';
+    return request(`/admin/issues${query}`);
+  },
+
+  async resolveIssue(issueId, status) {
+    return request(`/admin/issues/${issueId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    });
+  },
 };

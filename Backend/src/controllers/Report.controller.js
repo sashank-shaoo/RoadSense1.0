@@ -28,13 +28,12 @@ import {
 } from "../zod/ReportSchema.js";
 
 export const requireAdminOrWorkerGroup = async (request, reply) => {
-  if (
-    !(request.user?.admin && request.user.role === "ADMIN") &&
-    request.user?.role !== "WORKER_GROUP"
-  ) {
+  const role = request.user?.role;
+  const isAdmin = request.user?.admin && role === "ADMIN";
+  if (!isAdmin && role !== "WORKER_GROUP" && role !== "WORKER") {
     return reply.status(403).send({
       success: false,
-      error: "Administrator or worker group authentication required",
+      error: "Administrator or worker authentication required",
     });
   }
 };

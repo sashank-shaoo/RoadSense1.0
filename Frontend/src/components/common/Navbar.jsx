@@ -4,7 +4,7 @@ import { openModal } from '../../store/slices/uiSlice.js';
 import { logoutSuccess } from '../../store/slices/authSlice.js';
 import { authApi } from '../../api/authApi.js';
 import {
-  MapPin, AlertTriangle, User, LayoutDashboard, Menu, X, Star, LogOut, ChevronDown, Wrench, ShieldCheck, FileText,
+  MapPin, AlertTriangle, User, LayoutDashboard, Menu, X, Star, LogOut, ChevronDown, Wrench, ShieldCheck, FileText, HardHat,
 } from 'lucide-react';
 import { useState } from 'react';
 import styles from './Navbar.module.css';
@@ -26,13 +26,13 @@ export default function Navbar() {
 
   const getRoleIcon = () => {
     if (role === 'ADMIN') return <ShieldCheck size={14} />;
-    if (role === 'WORKER_GROUP') return <Wrench size={14} />;
+    if (role === 'WORKER_GROUP' || role === 'WORKER') return <Wrench size={14} />;
     return <User size={14} />;
   };
 
   const getRoleLabel = () => {
     if (role === 'ADMIN') return 'Admin';
-    if (role === 'WORKER_GROUP') return 'Worker';
+    if (role === 'WORKER_GROUP' || role === 'WORKER') return 'Worker';
     return 'Citizen';
   };
 
@@ -61,7 +61,7 @@ export default function Navbar() {
           <Link to="/report" className={`${styles.navLink} ${isActive('/report') ? styles.active : ''}`}>
             <AlertTriangle size={14} /> Report
           </Link>
-          {role === 'WORKER_GROUP' && (
+          {(role === 'WORKER_GROUP' || role === 'WORKER') && (
             <Link to="/worker" className={`${styles.navLink} ${isActive('/worker') ? styles.active : ''}`}>
               <Wrench size={14} /> Portal
             </Link>
@@ -110,6 +110,11 @@ export default function Navbar() {
                       <User size={14} /> My Profile
                     </Link>
                   )}
+                  {(role === 'WORKER_GROUP' || role === 'WORKER') && (
+                    <Link to="/worker/profile" className={styles.dropdownItem} onClick={() => setProfileOpen(false)}>
+                      <HardHat size={14} /> Crew Profile
+                    </Link>
+                  )}
                   <button className={`${styles.dropdownItem} ${styles.danger}`} onClick={handleLogout}>
                     <LogOut size={14} /> Sign Out
                   </button>
@@ -132,8 +137,11 @@ export default function Navbar() {
           <Link to="/explore" className={styles.mobileLink} onClick={() => setMenuOpen(false)}>Explore Map</Link>
           <Link to="/reports" className={styles.mobileLink} onClick={() => setMenuOpen(false)}>All Reports</Link>
           <Link to="/report" className={styles.mobileLink} onClick={() => setMenuOpen(false)}>Report Damage</Link>
-          {role === 'WORKER_GROUP' && (
-            <Link to="/worker" className={styles.mobileLink} onClick={() => setMenuOpen(false)}>Worker Portal</Link>
+          {(role === 'WORKER_GROUP' || role === 'WORKER') && (
+            <>
+              <Link to="/worker" className={styles.mobileLink} onClick={() => setMenuOpen(false)}>Worker Portal</Link>
+              <Link to="/worker/profile" className={styles.mobileLink} onClick={() => setMenuOpen(false)}>Crew Profile</Link>
+            </>
           )}
           {role === 'ADMIN' && (
             <Link to="/admin" className={styles.mobileLink} onClick={() => setMenuOpen(false)}>Admin Console</Link>

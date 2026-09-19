@@ -55,9 +55,11 @@ export const createBid = async (reportId, workerId) => {
 export const getBidsForReport = async (reportId) => {
   return await sql.unsafe(
     `SELECT b.id, b.report_id, b.worker_id, b.status, b.created_at, b.updated_at,
-            u.name AS worker_name, u.email AS worker_email
+            COALESCE(u.name, wg.name) AS worker_name,
+            COALESCE(u.email, wg.email) AS worker_email
      FROM bids b
-     JOIN users u ON u.id = b.worker_id
+     LEFT JOIN users u ON u.id = b.worker_id
+     LEFT JOIN worker_groups wg ON wg.id = b.worker_id
      WHERE b.report_id = $1
      ORDER BY b.created_at ASC;`,
     [reportId],
