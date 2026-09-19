@@ -118,11 +118,13 @@ async function runMigration(config = process.env) {
     );
     -- Drop FK on worker_id if it exists from older schema so both users & worker_groups can bid
     ALTER TABLE bids DROP CONSTRAINT IF EXISTS bids_worker_id_fkey;
+    ALTER TABLE bids ADD COLUMN IF NOT EXISTS amount NUMERIC(10, 2);
     CREATE INDEX IF NOT EXISTS bids_report_id_idx ON bids (report_id);
     CREATE INDEX IF NOT EXISTS bids_worker_id_idx ON bids (worker_id);
     CREATE INDEX IF NOT EXISTS bids_status_idx ON bids (status);
+    CREATE INDEX IF NOT EXISTS bids_report_amount_idx ON bids (report_id, amount ASC);
   `);
-  console.log("  ✅ bids table created");
+  console.log("  ✅ bids table created & amount column ensured");
 
   // ──────────────────────────────────────────────────
   // BLOCK 6 — Verification votes table

@@ -225,11 +225,38 @@ export const getReportById = async (reportId) => {
       r.verification_ends_at,
       u.name AS reporter_name,
       u.email AS reporter_email,
-      w.name AS assigned_worker_name,
-      w.email AS assigned_worker_email
+      COALESCE(w.name, wg.name) AS assigned_worker_name,
+      COALESCE(w.email, wg.email) AS assigned_worker_email,
+      (
+        SELECT MIN(b.amount)
+        FROM bids b
+        WHERE b.report_id = r.id AND b.status = 'ACTIVE' AND b.amount IS NOT NULL
+      ) AS lowest_bid,
+      (
+        SELECT b.worker_id
+        FROM bids b
+        WHERE b.report_id = r.id AND b.status = 'ACTIVE' AND b.amount IS NOT NULL
+        ORDER BY b.amount ASC, b.created_at ASC
+        LIMIT 1
+      ) AS lowest_bidder_id,
+      (
+        SELECT COALESCE(bu.name, bwg.name)
+        FROM bids b
+        LEFT JOIN users bu ON bu.id = b.worker_id
+        LEFT JOIN worker_groups bwg ON bwg.id = b.worker_id
+        WHERE b.report_id = r.id AND b.status = 'ACTIVE' AND b.amount IS NOT NULL
+        ORDER BY b.amount ASC, b.created_at ASC
+        LIMIT 1
+      ) AS lowest_bidder_name,
+      (
+        SELECT COUNT(*)::int
+        FROM bids b
+        WHERE b.report_id = r.id AND b.status = 'ACTIVE'
+      ) AS bid_count
     FROM reports r
     LEFT JOIN users u ON r.user_id = u.id
     LEFT JOIN users w ON r.assigned_worker_id = w.id
+    LEFT JOIN worker_groups wg ON r.assigned_worker_id = wg.id
     WHERE r.id = $1;
   `;
   const [report] = await sql.unsafe(text, [reportId]);
@@ -239,32 +266,61 @@ export const getReportById = async (reportId) => {
 export const getReportsByUserId = async (userId) => {
   const text = `
     SELECT
-      id,
-      user_id,
-      media_type,
-      image_mime_type,
-      original_filename,
-      description,
-      s3_object_key,
-      file_size_bytes,
-      ST_Y(location::geometry) AS latitude,
-      ST_X(location::geometry) AS longitude,
-      json_build_array(ST_X(location::geometry), ST_Y(location::geometry)) AS coordinates,
-      status,
-      detection_count,
-      highest_severity,
-      damage_score,
-      raw_ai_response,
-      support_count,
-      created_at,
-      assigned_worker_id,
-      bidding_started_at,
-      bidding_ends_at,
-      completed_at,
-      verification_ends_at
-    FROM reports
-    WHERE user_id = $1
-    ORDER BY created_at DESC;
+      r.id,
+      r.user_id,
+      r.media_type,
+      r.image_mime_type,
+      r.original_filename,
+      r.description,
+      r.s3_object_key,
+      r.file_size_bytes,
+      ST_Y(r.location::geometry) AS latitude,
+      ST_X(r.location::geometry) AS longitude,
+      json_build_array(ST_X(r.location::geometry), ST_Y(r.location::geometry)) AS coordinates,
+      r.status,
+      r.detection_count,
+      r.highest_severity,
+      r.damage_score,
+      r.raw_ai_response,
+      r.support_count,
+      r.created_at,
+      r.assigned_worker_id,
+      r.bidding_started_at,
+      r.bidding_ends_at,
+      r.completed_at,
+      r.verification_ends_at,
+      COALESCE(w.name, wg.name) AS assigned_worker_name,
+      (
+        SELECT MIN(b.amount)
+        FROM bids b
+        WHERE b.report_id = r.id AND b.status = 'ACTIVE' AND b.amount IS NOT NULL
+      ) AS lowest_bid,
+      (
+        SELECT b.worker_id
+        FROM bids b
+        WHERE b.report_id = r.id AND b.status = 'ACTIVE' AND b.amount IS NOT NULL
+        ORDER BY b.amount ASC, b.created_at ASC
+        LIMIT 1
+      ) AS lowest_bidder_id,
+      (
+        SELECT COALESCE(bu.name, bwg.name)
+        FROM bids b
+        LEFT JOIN users bu ON bu.id = b.worker_id
+        LEFT JOIN worker_groups bwg ON bwg.id = b.worker_id
+        WHERE b.report_id = r.id AND b.status = 'ACTIVE' AND b.amount IS NOT NULL
+        ORDER BY b.amount ASC, b.created_at ASC
+        LIMIT 1
+      ) AS lowest_bidder_name,
+      (
+        SELECT COUNT(*)::int
+        FROM bids b
+        WHERE b.report_id = r.id AND b.status = 'ACTIVE'
+      ) AS bid_count
+    FROM reports r
+    LEFT JOIN users w ON r.assigned_worker_id = w.id
+    LEFT JOIN worker_groups wg ON r.assigned_worker_id = wg.id
+    WHERE r.user_id = $1
+    ORDER BY r.created_at DESC;
   `;
 
   return await sql.unsafe(text, [userId]);
@@ -273,31 +329,60 @@ export const getReportsByUserId = async (userId) => {
 export const getAllReports = async () => {
   const text = `
     SELECT
-      id,
-      user_id,
-      media_type,
-      image_mime_type,
-      original_filename,
-      description,
-      s3_object_key,
-      file_size_bytes,
-      ST_Y(location::geometry) AS latitude,
-      ST_X(location::geometry) AS longitude,
-      json_build_array(ST_X(location::geometry), ST_Y(location::geometry)) AS coordinates,
-      status,
-      detection_count,
-      highest_severity,
-      damage_score,
-      raw_ai_response,
-      support_count,
-      created_at,
-      assigned_worker_id,
-      bidding_started_at,
-      bidding_ends_at,
-      completed_at,
-      verification_ends_at
-    FROM reports
-    ORDER BY created_at DESC;
+      r.id,
+      r.user_id,
+      r.media_type,
+      r.image_mime_type,
+      r.original_filename,
+      r.description,
+      r.s3_object_key,
+      r.file_size_bytes,
+      ST_Y(r.location::geometry) AS latitude,
+      ST_X(r.location::geometry) AS longitude,
+      json_build_array(ST_X(r.location::geometry), ST_Y(r.location::geometry)) AS coordinates,
+      r.status,
+      r.detection_count,
+      r.highest_severity,
+      r.damage_score,
+      r.raw_ai_response,
+      r.support_count,
+      r.created_at,
+      r.assigned_worker_id,
+      r.bidding_started_at,
+      r.bidding_ends_at,
+      r.completed_at,
+      r.verification_ends_at,
+      COALESCE(w.name, wg.name) AS assigned_worker_name,
+      (
+        SELECT MIN(b.amount)
+        FROM bids b
+        WHERE b.report_id = r.id AND b.status = 'ACTIVE' AND b.amount IS NOT NULL
+      ) AS lowest_bid,
+      (
+        SELECT b.worker_id
+        FROM bids b
+        WHERE b.report_id = r.id AND b.status = 'ACTIVE' AND b.amount IS NOT NULL
+        ORDER BY b.amount ASC, b.created_at ASC
+        LIMIT 1
+      ) AS lowest_bidder_id,
+      (
+        SELECT COALESCE(bu.name, bwg.name)
+        FROM bids b
+        LEFT JOIN users bu ON bu.id = b.worker_id
+        LEFT JOIN worker_groups bwg ON bwg.id = b.worker_id
+        WHERE b.report_id = r.id AND b.status = 'ACTIVE' AND b.amount IS NOT NULL
+        ORDER BY b.amount ASC, b.created_at ASC
+        LIMIT 1
+      ) AS lowest_bidder_name,
+      (
+        SELECT COUNT(*)::int
+        FROM bids b
+        WHERE b.report_id = r.id AND b.status = 'ACTIVE'
+      ) AS bid_count
+    FROM reports r
+    LEFT JOIN users w ON r.assigned_worker_id = w.id
+    LEFT JOIN worker_groups wg ON r.assigned_worker_id = wg.id
+    ORDER BY r.created_at DESC;
   `;
 
   return await sql.unsafe(text);
@@ -306,32 +391,61 @@ export const getAllReports = async () => {
 export const getReportsByStatus = async (status) => {
   const text = `
     SELECT
-      id,
-      user_id,
-      media_type,
-      image_mime_type,
-      original_filename,
-      description,
-      s3_object_key,
-      file_size_bytes,
-      ST_Y(location::geometry) AS latitude,
-      ST_X(location::geometry) AS longitude,
-      json_build_array(ST_X(location::geometry), ST_Y(location::geometry)) AS coordinates,
-      status,
-      detection_count,
-      highest_severity,
-      damage_score,
-      raw_ai_response,
-      support_count,
-      created_at,
-      assigned_worker_id,
-      bidding_started_at,
-      bidding_ends_at,
-      completed_at,
-      verification_ends_at
-    FROM reports
-    WHERE status = $1
-    ORDER BY created_at DESC;
+      r.id,
+      r.user_id,
+      r.media_type,
+      r.image_mime_type,
+      r.original_filename,
+      r.description,
+      r.s3_object_key,
+      r.file_size_bytes,
+      ST_Y(r.location::geometry) AS latitude,
+      ST_X(r.location::geometry) AS longitude,
+      json_build_array(ST_X(r.location::geometry), ST_Y(r.location::geometry)) AS coordinates,
+      r.status,
+      r.detection_count,
+      r.highest_severity,
+      r.damage_score,
+      r.raw_ai_response,
+      r.support_count,
+      r.created_at,
+      r.assigned_worker_id,
+      r.bidding_started_at,
+      r.bidding_ends_at,
+      r.completed_at,
+      r.verification_ends_at,
+      COALESCE(w.name, wg.name) AS assigned_worker_name,
+      (
+        SELECT MIN(b.amount)
+        FROM bids b
+        WHERE b.report_id = r.id AND b.status = 'ACTIVE' AND b.amount IS NOT NULL
+      ) AS lowest_bid,
+      (
+        SELECT b.worker_id
+        FROM bids b
+        WHERE b.report_id = r.id AND b.status = 'ACTIVE' AND b.amount IS NOT NULL
+        ORDER BY b.amount ASC, b.created_at ASC
+        LIMIT 1
+      ) AS lowest_bidder_id,
+      (
+        SELECT COALESCE(bu.name, bwg.name)
+        FROM bids b
+        LEFT JOIN users bu ON bu.id = b.worker_id
+        LEFT JOIN worker_groups bwg ON bwg.id = b.worker_id
+        WHERE b.report_id = r.id AND b.status = 'ACTIVE' AND b.amount IS NOT NULL
+        ORDER BY b.amount ASC, b.created_at ASC
+        LIMIT 1
+      ) AS lowest_bidder_name,
+      (
+        SELECT COUNT(*)::int
+        FROM bids b
+        WHERE b.report_id = r.id AND b.status = 'ACTIVE'
+      ) AS bid_count
+    FROM reports r
+    LEFT JOIN users w ON r.assigned_worker_id = w.id
+    LEFT JOIN worker_groups wg ON r.assigned_worker_id = wg.id
+    WHERE r.status = $1
+    ORDER BY r.created_at DESC;
   `;
 
   return await sql.unsafe(text, [status]);

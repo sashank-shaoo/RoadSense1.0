@@ -81,8 +81,11 @@ export const reportApi = {
   },
 
   // ── Bidding ──
-  async placeBid(reportId) {
-    return request(`/reports/${reportId}/bids`, { method: 'POST' });
+  async placeBid(reportId, amount) {
+    return request(`/reports/${reportId}/bids`, {
+      method: 'POST',
+      body: JSON.stringify({ amount: Number(amount) }),
+    });
   },
 
   async getBidsForReport(reportId) {

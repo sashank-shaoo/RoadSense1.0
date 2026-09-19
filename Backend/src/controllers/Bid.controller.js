@@ -4,7 +4,7 @@ import {
 } from "../dao/BidDao.js";
 import { findWorkerById } from "../dao/UserDao.js";
 import { findWorkerGroupById } from "../dao/WorkerDao.js";
-import { bidReportIdSchema } from "../zod/BidSchema.js";
+import { bidReportIdSchema, placeBidBodySchema } from "../zod/BidSchema.js";
 
 export const requireWorker = async (request, reply) => {
   const role = request.user?.role;
@@ -50,8 +50,18 @@ export const placeBid = async (request, reply) => {
       });
     }
 
+    const bodyResult = placeBidBodySchema.safeParse(request.body || {});
+    if (!bodyResult.success) {
+      const issueMsg = bodyResult.error.issues?.[0]?.message || "Invalid bid amount";
+      return reply.status(400).send({
+        success: false,
+        error: issueMsg,
+        details: bodyResult.error.format(),
+      });
+    }
+
     const workerId = request.user.id;
-    const bid = await createBid(reportIdResult.data, workerId);
+    const bid = await createBid(reportIdResult.data, workerId, bodyResult.data.amount);
 
     return reply.status(201).send({
       success: true,
@@ -74,13 +84,26 @@ export const placeBid = async (request, reply) => {
     if (error.message === "BIDDING_WINDOW_CLOSED") {
       return reply.status(409).send({
         success: false,
-        error: "Bidding period has closed for this report",
+        error: "12-hour bidding period has closed for this report",
       });
     }
-    if (error.message === "DUPLICATE_BID") {
+    if (error.message === "BID_NOT_LOWER") {
+      return reply.status(400).send({
+        success: false,
+        error: `Your bid must be lower than the current lowest bid of ₹${error.currentLowest.toLocaleString('en-IN')}`,
+        currentLowest: error.currentLowest,
+      });
+    }
+    if (error.message === "ALREADY_LOWEST_BIDDER") {
       return reply.status(409).send({
         success: false,
-        error: "You have already placed a bid on this report",
+        error: "You already hold the lowest bid on this report",
+      });
+    }
+    if (error.message === "INVALID_AMOUNT") {
+      return reply.status(400).send({
+        success: false,
+        error: "Bid amount must be a positive number greater than 0",
       });
     }
 

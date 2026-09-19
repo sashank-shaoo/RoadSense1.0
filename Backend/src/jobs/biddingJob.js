@@ -3,13 +3,13 @@ import {
   findExpiredBiddingReports,
 } from "../dao/ReportDao.js";
 import {
-  getEarliestActiveBid,
+  getLowestActiveBid,
   finalizeReportBids,
 } from "../dao/BidDao.js";
 
 /**
- * Periodically processes reports whose 24-hour bidding period has expired.
- * Assigns the winning worker using the "first-bid-wins" rule.
+ * Periodically processes reports whose 12-hour bidding period has expired.
+ * Assigns the winning worker using the "lowest-bid-wins" reverse auction rule.
  */
 export const finalizeExpiredBids = async (logger = console) => {
   try {
@@ -36,8 +36,8 @@ export const finalizeExpiredBids = async (logger = console) => {
             return;
           }
 
-          // Fetch earliest active bid (first-bid-wins)
-          const winningBid = await getEarliestActiveBid(report.id);
+          // Fetch lowest active bid (reverse auction: lowest bid wins)
+          const winningBid = await getLowestActiveBid(report.id);
 
           if (winningBid) {
             await finalizeReportBids(tx, report.id, winningBid.id);
