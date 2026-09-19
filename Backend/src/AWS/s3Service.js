@@ -1,4 +1,5 @@
 import {
+  DeleteObjectCommand,
   GetObjectCommand,
   HeadObjectCommand,
   PutObjectCommand,
@@ -80,3 +81,14 @@ export const downloadObject = async ({ objectKey, config }) => {
     contentLength: response.ContentLength,
   };
 };
+
+export const deleteObject = async ({ objectKey, config }) => {
+  const awsConfig = getS3Config(config);
+  const command = new DeleteObjectCommand({
+    Bucket: awsConfig.bucketName,
+    Key: objectKey,
+  });
+
+  return getS3Client(config).send(command);
+};
+

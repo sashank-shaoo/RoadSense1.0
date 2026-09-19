@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { setReports, setActiveReport } from '../store/slices/reportSlice.js';
 import { openModal } from '../store/slices/uiSlice.js';
 import { reportApi } from '../api/reportApi.js';
@@ -31,6 +31,7 @@ import styles from './ReportsPage.module.css';
 
 export default function ReportsPage() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { reports } = useSelector((s) => s.reports);
   const { isAuthenticated } = useSelector((s) => s.auth);
 
@@ -97,7 +98,7 @@ export default function ReportsPage() {
 
   const handleOpenDetail = (report) => {
     dispatch(setActiveReport(report));
-    dispatch(openModal('reportDetail'));
+    navigate(`/reports/${report.id}`);
   };
 
   // Quick stats computed from current filtered items

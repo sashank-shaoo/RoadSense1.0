@@ -25,6 +25,15 @@ export const reportApi = {
     };
   },
 
+  async getReportById(reportId) {
+    const res = await this.getAllReports();
+    const found = res.reports?.find((r) => r.id === reportId);
+    return {
+      success: Boolean(found),
+      report: found || null,
+    };
+  },
+
   async getReportsByUser(userId) {
     const res = await request(`/reports/user/${userId}`);
     const rawList = res?.reports || (Array.isArray(res) ? res : []);

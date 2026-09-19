@@ -105,3 +105,45 @@ export const verifyUserEmail = async (email) => {
   const [user] = await sql.unsafe(text, [email]);
   return user;
 };
+
+export const createWorker = async ({ name, email, passwordHash, phone = null }) => {
+  const text = `
+    INSERT INTO users (name, email, password_hash, role, is_active, is_varified_email, phone)
+    VALUES ($1, $2, $3, 'WORKER', TRUE, TRUE, $4)
+    RETURNING id, name, email, phone, role, is_active, created_at, updated_at;
+  `;
+  const [worker] = await sql.unsafe(text, [name, email, passwordHash, phone]);
+  return worker;
+};
+
+export const getWorkers = async () => {
+  const text = `
+    SELECT id, name, email, phone, role, is_active, created_at, updated_at
+    FROM users
+    WHERE role = 'WORKER'
+    ORDER BY created_at DESC;
+  `;
+  return await sql.unsafe(text);
+};
+
+export const findWorkerById = async (id) => {
+  const text = `
+    SELECT id, name, email, phone, role, is_active, created_at, updated_at
+    FROM users
+    WHERE id = $1 AND role = 'WORKER';
+  `;
+  const [worker] = await sql.unsafe(text, [id]);
+  return worker;
+};
+
+export const toggleWorkerActive = async (workerId, isActive) => {
+  const text = `
+    UPDATE users
+    SET is_active = $2, updated_at = CURRENT_TIMESTAMP
+    WHERE id = $1 AND role = 'WORKER'
+    RETURNING id, name, email, phone, role, is_active, updated_at;
+  `;
+  const [worker] = await sql.unsafe(text, [workerId, isActive]);
+  return worker;
+};
+

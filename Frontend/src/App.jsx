@@ -15,6 +15,7 @@ import HomePage from './pages/HomePage.jsx';
 import ExplorePage from './pages/ExplorePage.jsx';
 import ReportsPage from './pages/ReportsPage.jsx';
 import CreateReportPage from './pages/CreateReportPage.jsx';
+import InspectReportPage from './pages/InspectReportPage.jsx';
 import ProfilePage from './pages/ProfilePage.jsx';
 import WorkerPortalPage from './pages/WorkerPortalPage.jsx';
 import AdminPortalPage from './pages/AdminPortalPage.jsx';
@@ -33,6 +34,7 @@ export default function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/explore" element={<ExplorePage />} />
           <Route path="/reports" element={<ReportsPage />} />
+          <Route path="/reports/:id" element={<InspectReportPage />} />
           <Route path="/report" element={<CreateReportPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/worker" element={<WorkerPortalPage />} />

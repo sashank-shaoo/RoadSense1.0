@@ -27,7 +27,17 @@ export const reportStatusSchema = z.enum([
   "notStarted",
   "onGoing",
   "completed",
+  "BIDDING",
+  "ASSIGNED",
+  "IN_PROGRESS",
+  "VERIFICATION",
+  "ESCALATED",
+  "DELETED",
 ]);
+
+export const workerStatusUpdateSchema = z.object({
+  status: z.enum(["IN_PROGRESS", "COMPLETED"]),
+});
 
 export const reportProcessingStatusSchema = z.enum([
   "PENDING",

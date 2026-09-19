@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, CircleMarker, Tooltip, useMap } from 'react-leaflet';
 import { useDispatch } from 'react-redux';
 import { setActiveReport } from '../../store/slices/reportSlice.js';
@@ -35,11 +36,12 @@ function SetViewOnReports({ reports }) {
 
 export default function DamageMap({ reports = [], height = '100%', showPopup = false, interactive = true }) {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const handleMarkerClick = (report) => {
     if (interactive) {
       dispatch(setActiveReport(report));
-      dispatch(openModal('reportDetail'));
+      navigate(`/reports/${report.id}`);
     }
   };
 

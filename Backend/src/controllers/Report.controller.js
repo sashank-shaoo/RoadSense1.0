@@ -6,6 +6,9 @@ import {
   createReport as insertReport,
   replaceReportDetections,
   findNearbyReport,
+  findReportStatusById,
+  getReportById,
+  updateReportLifecycle,
   supportReport,
   getAllReports,
   getReportsByUserId,
@@ -21,6 +24,7 @@ import {
   reportCreateSchema,
   reportIdSchema,
   reportStatusSchema,
+  workerStatusUpdateSchema,
 } from "../zod/ReportSchema.js";
 
 export const requireAdminOrWorkerGroup = async (request, reply) => {
@@ -349,6 +353,14 @@ export const createReport = async (request, reply) => {
   }
 };
 
+// Final / closed statuses where support/voting is no longer allowed
+const CLOSED_STATUSES = new Set([
+  "completed",
+  "VERIFICATION",
+  "ESCALATED",
+  "DELETED",
+]);
+
 export const supportExistingReport = async (request, reply) => {
   try {
     const userId = request.user?.id;
@@ -357,6 +369,21 @@ export const supportExistingReport = async (request, reply) => {
       return reply.status(400).send({
         success: false,
         error: "reportId must be a valid UUID",
+      });
+    }
+
+    // Block support on closed/completed reports
+    const reportStatus = await findReportStatusById(reportIdResult.data);
+    if (!reportStatus) {
+      return reply.status(404).send({
+        success: false,
+        error: "Report not found",
+      });
+    }
+    if (CLOSED_STATUSES.has(reportStatus.status)) {
+      return reply.status(409).send({
+        success: false,
+        error: "This report has been completed and no longer accepts support votes",
       });
     }
 
@@ -458,3 +485,134 @@ export const getReportsByStatus = async (request, reply) => {
     });
   }
 };
+
+export const updateWorkStatus = async (request, reply) => {
+  try {
+    const reportIdResult = reportIdSchema.safeParse(request.params.reportId);
+    if (!reportIdResult.success) {
+      return reply.status(400).send({
+        success: false,
+        error: "Invalid report ID format",
+        details: reportIdResult.error.format(),
+      });
+    }
+
+    const bodyResult = workerStatusUpdateSchema.safeParse(request.body);
+    if (!bodyResult.success) {
+      return reply.status(400).send({
+        success: false,
+        error: "Invalid status update payload. Status must be 'IN_PROGRESS' or 'COMPLETED'",
+        details: bodyResult.error.format(),
+      });
+    }
+
+    const reportId = reportIdResult.data;
+    const { status: targetStatus } = bodyResult.data;
+    const workerId = request.user.id;
+
+    const report = await getReportById(reportId);
+    if (!report) {
+      return reply.status(404).send({
+        success: false,
+        error: "Report not found",
+      });
+    }
+
+    // Verify assigned worker
+    if (report.assigned_worker_id !== workerId) {
+      return reply.status(403).send({
+        success: false,
+        error: "You are not the assigned worker for this report",
+      });
+    }
+
+    // Transition validation
+    if (targetStatus === "IN_PROGRESS") {
+      if (report.status !== "ASSIGNED" && report.status !== "notStarted") {
+        return reply.status(409).send({
+          success: false,
+          error: `Cannot transition report from '${report.status}' to 'IN_PROGRESS'. Report must be in 'ASSIGNED' status.`,
+        });
+      }
+
+      const updated = await updateReportLifecycle(reportId, {
+        status: "IN_PROGRESS",
+      });
+
+      return reply.status(200).send({
+        success: true,
+        message: "Report status updated to IN_PROGRESS",
+        data: updated,
+      });
+    }
+
+    if (targetStatus === "COMPLETED") {
+      if (report.status !== "IN_PROGRESS" && report.status !== "onGoing") {
+        return reply.status(409).send({
+          success: false,
+          error: `Cannot mark report as completed from '${report.status}'. Report must be in 'IN_PROGRESS' status.`,
+        });
+      }
+
+      // Mark completed -> enters 7-day community verification vote pool
+      const now = new Date();
+      const verificationEndsAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+      const updated = await updateReportLifecycle(reportId, {
+        status: "VERIFICATION",
+        completed_at: now.toISOString(),
+        verification_ends_at: verificationEndsAt.toISOString(),
+      });
+
+      return reply.status(200).send({
+        success: true,
+        message: "Work marked as completed. Report is now under 7-day community verification.",
+        data: updated,
+      });
+    }
+
+    return reply.status(400).send({
+      success: false,
+      error: "Invalid target status",
+    });
+  } catch (error) {
+    request.log.error(error);
+    return reply.status(500).send({
+      success: false,
+      error: "Internal server error while updating work status",
+    });
+  }
+};
+
+export const getReportByIdController = async (request, reply) => {
+  try {
+    const reportIdResult = reportIdSchema.safeParse(request.params.reportId);
+    if (!reportIdResult.success) {
+      return reply.status(400).send({
+        success: false,
+        error: "Invalid report ID format",
+      });
+    }
+
+    const report = await getReportById(reportIdResult.data);
+    if (!report) {
+      return reply.status(404).send({
+        success: false,
+        error: "Report not found",
+      });
+    }
+
+    const [reportWithUrls] = await attachMediaUrls([report], request.server.config);
+    return reply.status(200).send({
+      success: true,
+      report: reportWithUrls,
+    });
+  } catch (error) {
+    request.log.error(error);
+    return reply.status(500).send({
+      success: false,
+      error: "Internal server error while retrieving report",
+    });
+  }
+};
+

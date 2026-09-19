@@ -14,9 +14,11 @@ import userRoutes from "./routes/User.route.js";
 import reportRoutes from "./routes/Report.route.js";
 import workerRoutes from "./routes/Worker.route.js";
 import adminRoutes from "./routes/Admin.route.js";
+import { startScheduler, stopScheduler } from "./jobs/scheduler.js";
 const app = Fastify({
   logger: true,
 });
+
 
 await app.register(env, {
   confKey: "config",
@@ -74,6 +76,14 @@ const sql = createDatabase(app.config);
 app.decorate("db", sql);
 await sql`SELECT 1`;
 app.log.info("Database connection established successfully");
+
+// Start lifecycle scheduler for worker bidding and community verification cleanup
+startScheduler(app.config, app.log);
+
+app.addHook("onClose", async (instance) => {
+  stopScheduler(instance.log);
+});
+
 
 await app.register(helmet);
 await app.register(cors, {

@@ -4,9 +4,28 @@ import {
   findAdminByEmail,
   findAdminById,
 } from "../dao/AdminDao.js";
-import { getAllUsers } from "../dao/UserDao.js";
+import {
+  getAllUsers,
+  findUserByEmail,
+  createWorker,
+  getWorkers,
+  toggleWorkerActive,
+} from "../dao/UserDao.js";
 import { getAllWorkerGroups } from "../dao/WorkerDao.js";
+import {
+  getAllIssues,
+  updateIssueStatus,
+} from "../dao/IssueDao.js";
 import { adminCreateSchema, adminLoginSchema } from "../zod/AdminSchema.js";
+import {
+  workerUserCreateSchema,
+  workerToggleStatusSchema,
+  workerUserIdSchema,
+} from "../zod/WorkerCreateSchema.js";
+import {
+  issueIdSchema,
+  issueStatusUpdateSchema,
+} from "../zod/IssueSchema.js";
 
 const adminCookieOptions = (request) => ({
   path: "/",
@@ -170,4 +189,161 @@ export const getAllWorkerGroupsForAdmin = async (request, reply) => {
       .send({ success: false, error: "Failed to fetch worker groups" });
   }
 };
+
+export const createWorkerController = async (request, reply) => {
+  try {
+    const validationResult = workerUserCreateSchema.safeParse(request.body);
+    if (!validationResult.success) {
+      return reply.status(400).send({
+        success: false,
+        error: "Validation failed",
+        details: validationResult.error.format(),
+      });
+    }
+
+    const { name, email, password, phone } = validationResult.data;
+
+    const existingUser = await findUserByEmail(email);
+    if (existingUser) {
+      return reply.status(409).send({
+        success: false,
+        error: "User with this email already exists",
+      });
+    }
+
+    const passwordHash = await argon2.hash(password);
+    const worker = await createWorker({
+      name,
+      email,
+      passwordHash,
+      phone: phone || null,
+    });
+
+    return reply.status(201).send({
+      success: true,
+      message: "Worker account created successfully",
+      worker,
+    });
+  } catch (error) {
+    request.log.error(error);
+    return reply.status(500).send({
+      success: false,
+      error: "Failed to create worker account",
+    });
+  }
+};
+
+export const getWorkersController = async (request, reply) => {
+  try {
+    const workers = await getWorkers();
+    return reply.status(200).send({
+      success: true,
+      workers,
+    });
+  } catch (error) {
+    request.log.error(error);
+    return reply.status(500).send({
+      success: false,
+      error: "Failed to fetch workers",
+    });
+  }
+};
+
+export const updateWorkerStatusController = async (request, reply) => {
+  try {
+    const idResult = workerUserIdSchema.safeParse(request.params.workerId);
+    if (!idResult.success) {
+      return reply.status(400).send({
+        success: false,
+        error: "Invalid worker ID format",
+      });
+    }
+
+    const bodyResult = workerToggleStatusSchema.safeParse(request.body);
+    if (!bodyResult.success) {
+      return reply.status(400).send({
+        success: false,
+        error: "Invalid status payload. 'is_active' (boolean) is required.",
+      });
+    }
+
+    const updated = await toggleWorkerActive(idResult.data, bodyResult.data.is_active);
+    if (!updated) {
+      return reply.status(404).send({
+        success: false,
+        error: "Worker not found",
+      });
+    }
+
+    return reply.status(200).send({
+      success: true,
+      message: `Worker account ${bodyResult.data.is_active ? "activated" : "deactivated"} successfully`,
+      worker: updated,
+    });
+  } catch (error) {
+    request.log.error(error);
+    return reply.status(500).send({
+      success: false,
+      error: "Failed to update worker status",
+    });
+  }
+};
+
+export const getAdminIssuesController = async (request, reply) => {
+  try {
+    const statusFilter = request.query?.status || null;
+    const issues = await getAllIssues(statusFilter);
+    return reply.status(200).send({
+      success: true,
+      issues,
+    });
+  } catch (error) {
+    request.log.error(error);
+    return reply.status(500).send({
+      success: false,
+      error: "Failed to fetch issues",
+    });
+  }
+};
+
+export const resolveAdminIssueController = async (request, reply) => {
+  try {
+    const idResult = issueIdSchema.safeParse(request.params.issueId);
+    if (!idResult.success) {
+      return reply.status(400).send({
+        success: false,
+        error: "Invalid issue ID format",
+      });
+    }
+
+    const bodyResult = issueStatusUpdateSchema.safeParse(request.body);
+    if (!bodyResult.success) {
+      return reply.status(400).send({
+        success: false,
+        error: "Invalid status. Must be 'OPEN', 'UNDER_REVIEW', or 'RESOLVED'",
+      });
+    }
+
+    const updated = await updateIssueStatus(idResult.data, bodyResult.data.status);
+    if (!updated) {
+      return reply.status(404).send({
+        success: false,
+        error: "Issue not found",
+      });
+    }
+
+    return reply.status(200).send({
+      success: true,
+      message: "Issue status updated successfully",
+      issue: updated,
+    });
+  } catch (error) {
+    request.log.error(error);
+    return reply.status(500).send({
+      success: false,
+      error: "Failed to update issue status",
+    });
+  }
+};
+
 

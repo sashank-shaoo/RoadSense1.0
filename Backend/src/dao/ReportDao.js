@@ -155,6 +155,14 @@ export const supportReport = async (reportId, userId) => {
   });
 };
 
+export const findReportStatusById = async (reportId) => {
+  const [row] = await sql.unsafe(
+    `SELECT id, status FROM reports WHERE id = $1;`,
+    [reportId],
+  );
+  return row;
+};
+
 export const findReportById = async (reportId, userId) => {
   const text = `
     SELECT
@@ -175,12 +183,56 @@ export const findReportById = async (reportId, userId) => {
       damage_score,
       raw_ai_response,
       support_count,
-      created_at
+      created_at,
+      assigned_worker_id,
+      bidding_started_at,
+      bidding_ends_at,
+      completed_at,
+      verification_ends_at
     FROM reports
     WHERE id = $1 AND user_id = $2;
   `;
 
   const [report] = await sql.unsafe(text, [reportId, userId]);
+  return report;
+};
+
+export const getReportById = async (reportId) => {
+  const text = `
+    SELECT
+      r.id,
+      r.user_id,
+      r.media_type,
+      r.image_mime_type,
+      r.original_filename,
+      r.description,
+      r.s3_object_key,
+      r.file_size_bytes,
+      ST_Y(r.location::geometry) AS latitude,
+      ST_X(r.location::geometry) AS longitude,
+      json_build_array(ST_X(r.location::geometry), ST_Y(r.location::geometry)) AS coordinates,
+      r.status,
+      r.detection_count,
+      r.highest_severity,
+      r.damage_score,
+      r.raw_ai_response,
+      r.support_count,
+      r.created_at,
+      r.assigned_worker_id,
+      r.bidding_started_at,
+      r.bidding_ends_at,
+      r.completed_at,
+      r.verification_ends_at,
+      u.name AS reporter_name,
+      u.email AS reporter_email,
+      w.name AS assigned_worker_name,
+      w.email AS assigned_worker_email
+    FROM reports r
+    LEFT JOIN users u ON r.user_id = u.id
+    LEFT JOIN users w ON r.assigned_worker_id = w.id
+    WHERE r.id = $1;
+  `;
+  const [report] = await sql.unsafe(text, [reportId]);
   return report;
 };
 
@@ -204,7 +256,12 @@ export const getReportsByUserId = async (userId) => {
       damage_score,
       raw_ai_response,
       support_count,
-      created_at
+      created_at,
+      assigned_worker_id,
+      bidding_started_at,
+      bidding_ends_at,
+      completed_at,
+      verification_ends_at
     FROM reports
     WHERE user_id = $1
     ORDER BY created_at DESC;
@@ -233,7 +290,12 @@ export const getAllReports = async () => {
       damage_score,
       raw_ai_response,
       support_count,
-      created_at
+      created_at,
+      assigned_worker_id,
+      bidding_started_at,
+      bidding_ends_at,
+      completed_at,
+      verification_ends_at
     FROM reports
     ORDER BY created_at DESC;
   `;
@@ -261,7 +323,12 @@ export const getReportsByStatus = async (status) => {
       damage_score,
       raw_ai_response,
       support_count,
-      created_at
+      created_at,
+      assigned_worker_id,
+      bidding_started_at,
+      bidding_ends_at,
+      completed_at,
+      verification_ends_at
     FROM reports
     WHERE status = $1
     ORDER BY created_at DESC;
@@ -297,7 +364,12 @@ export const completeReport = async (reportId, userId, aiResult) => {
       damage_score,
       raw_ai_response,
       support_count,
-      created_at;
+      created_at,
+      assigned_worker_id,
+      bidding_started_at,
+      bidding_ends_at,
+      completed_at,
+      verification_ends_at;
   `;
 
   const values = [
@@ -337,10 +409,147 @@ export const updateReportWorkStatus = async (reportId, status) => {
       damage_score,
       raw_ai_response,
       support_count,
-      created_at;
+      created_at,
+      assigned_worker_id,
+      bidding_started_at,
+      bidding_ends_at,
+      completed_at,
+      verification_ends_at;
   `;
 
   const [report] = await sql.unsafe(text, [reportId, status]);
+  return report;
+};
+
+export const updateReportLifecycle = async (reportId, fields = {}) => {
+  const setClauses = [];
+  const values = [reportId];
+  let paramIdx = 2;
+
+  if (fields.status !== undefined) {
+    setClauses.push(`status = $${paramIdx++}`);
+    values.push(fields.status);
+  }
+  if (fields.assigned_worker_id !== undefined) {
+    setClauses.push(`assigned_worker_id = $${paramIdx++}`);
+    values.push(fields.assigned_worker_id);
+  }
+  if (fields.bidding_started_at !== undefined) {
+    setClauses.push(`bidding_started_at = $${paramIdx++}`);
+    values.push(fields.bidding_started_at);
+  }
+  if (fields.bidding_ends_at !== undefined) {
+    setClauses.push(`bidding_ends_at = $${paramIdx++}`);
+    values.push(fields.bidding_ends_at);
+  }
+  if (fields.completed_at !== undefined) {
+    setClauses.push(`completed_at = $${paramIdx++}`);
+    values.push(fields.completed_at);
+  }
+  if (fields.verification_ends_at !== undefined) {
+    setClauses.push(`verification_ends_at = $${paramIdx++}`);
+    values.push(fields.verification_ends_at);
+  }
+
+  if (setClauses.length === 0) {
+    return await getReportById(reportId);
+  }
+
+  const text = `
+    UPDATE reports
+    SET ${setClauses.join(", ")}
+    WHERE id = $1
+    RETURNING
+      id,
+      user_id,
+      media_type,
+      image_mime_type,
+      original_filename,
+      description,
+      s3_object_key,
+      file_size_bytes,
+      ST_Y(location::geometry) AS latitude,
+      ST_X(location::geometry) AS longitude,
+      json_build_array(ST_X(location::geometry), ST_Y(location::geometry)) AS coordinates,
+      status,
+      detection_count,
+      highest_severity,
+      damage_score,
+      raw_ai_response,
+      support_count,
+      created_at,
+      assigned_worker_id,
+      bidding_started_at,
+      bidding_ends_at,
+      completed_at,
+      verification_ends_at;
+  `;
+  const [report] = await sql.unsafe(text, values);
+  return report;
+};
+
+export const assignWorkerToReport = async (reportId, workerId) => {
+  const text = `
+    UPDATE reports
+    SET
+      assigned_worker_id = $2,
+      status = 'ASSIGNED'
+    WHERE id = $1
+    RETURNING
+      id,
+      assigned_worker_id,
+      status,
+      bidding_started_at,
+      bidding_ends_at,
+      completed_at,
+      verification_ends_at;
+  `;
+  const [report] = await sql.unsafe(text, [reportId, workerId]);
+  return report;
+};
+
+export const findExpiredBiddingReports = async () => {
+  const text = `
+    SELECT
+      id,
+      user_id,
+      status,
+      bidding_started_at,
+      bidding_ends_at
+    FROM reports
+    WHERE status = 'BIDDING'
+      AND bidding_ends_at IS NOT NULL
+      AND bidding_ends_at <= CURRENT_TIMESTAMP;
+  `;
+  return await sql.unsafe(text);
+};
+
+export const findExpiredVerificationReports = async () => {
+  const text = `
+    SELECT
+      id,
+      user_id,
+      assigned_worker_id,
+      status,
+      s3_object_key,
+      completed_at,
+      verification_ends_at
+    FROM reports
+    WHERE status IN ('VERIFICATION', 'COMPLETED')
+      AND verification_ends_at IS NOT NULL
+      AND verification_ends_at <= CURRENT_TIMESTAMP;
+  `;
+  return await sql.unsafe(text);
+};
+
+export const softDeleteReport = async (reportId) => {
+  const text = `
+    UPDATE reports
+    SET status = 'DELETED'
+    WHERE id = $1
+    RETURNING id, status;
+  `;
+  const [report] = await sql.unsafe(text, [reportId]);
   return report;
 };
 

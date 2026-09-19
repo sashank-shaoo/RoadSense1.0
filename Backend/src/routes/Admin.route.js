@@ -6,6 +6,11 @@ import {
   loginAdmin,
   logoutAdmin,
   requireAdmin,
+  createWorkerController,
+  getWorkersController,
+  updateWorkerStatusController,
+  getAdminIssuesController,
+  resolveAdminIssueController,
 } from "../controllers/Admin.controller.js";
 import { createWorkerGroupController } from "../controllers/Worker.controller.js";
 import { authenticate } from "../middlewares/auth.middleware.js";
@@ -42,6 +47,36 @@ const adminRoutes = async (fastify) => {
     { preHandler: [authenticate, requireAdmin] },
     getAllWorkerGroupsForAdmin,
   );
+
+  // Worker management
+  fastify.post(
+    "/workers",
+    { preHandler: [authenticate, requireAdmin] },
+    createWorkerController,
+  );
+  fastify.get(
+    "/workers",
+    { preHandler: [authenticate, requireAdmin] },
+    getWorkersController,
+  );
+  fastify.patch(
+    "/workers/:workerId",
+    { preHandler: [authenticate, requireAdmin] },
+    updateWorkerStatusController,
+  );
+
+  // Issue management
+  fastify.get(
+    "/issues",
+    { preHandler: [authenticate, requireAdmin] },
+    getAdminIssuesController,
+  );
+  fastify.patch(
+    "/issues/:issueId",
+    { preHandler: [authenticate, requireAdmin] },
+    resolveAdminIssueController,
+  );
 };
 
 export default adminRoutes;
+
