@@ -28,8 +28,20 @@ export default function ProfilePage() {
   const [myReports, setMyReports] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Role guard: Workers and Admins should not be on the citizen profile page
   useEffect(() => {
     if (!isAuthenticated) return;
+    if (role === 'WORKER_GROUP' || role === 'WORKER') {
+      navigate('/worker/profile', { replace: true });
+    } else if (role === 'ADMIN') {
+      navigate('/admin', { replace: true });
+    }
+  }, [isAuthenticated, role, navigate]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    // Only load citizen profile data for END_USER role
+    if (role !== 'END_USER' && role !== null) return;
 
     // Fetch user profile and their submitted reports
     const loadProfileData = async () => {
@@ -54,7 +66,7 @@ export default function ProfilePage() {
     };
 
     loadProfileData();
-  }, [isAuthenticated, user?.id, dispatch]);
+  }, [isAuthenticated, role, user?.id, dispatch]);
 
   if (!isAuthenticated) {
     return (
@@ -68,6 +80,9 @@ export default function ProfilePage() {
       </div>
     );
   }
+
+  // Show nothing while redirecting non-citizen roles
+  if (role && role !== 'END_USER') return null;
 
   const creditPoints = user?.credit_points || 0;
   

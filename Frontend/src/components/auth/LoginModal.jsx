@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { closeModal, openModal, addToast } from '../../store/slices/uiSlice.js';
 import { loginSuccess, setLoading, setAuthError, setPendingVerification } from '../../store/slices/authSlice.js';
 import { authApi } from '../../api/authApi.js';
@@ -14,6 +15,7 @@ const ROLES = [
 
 export default function LoginModal() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { isLoading, error } = useSelector((s) => s.auth);
   const [role, setRole] = useState('citizen');
   const [form, setForm] = useState({ email: '', password: '' });
@@ -27,19 +29,23 @@ export default function LoginModal() {
     dispatch(setAuthError(null));
     try {
       let res;
+      let effectiveRole;
       if (role === 'citizen') {
         res = await authApi.loginUser(form);
-        dispatch(loginSuccess({ user: res.user, token: res.token, role: 'END_USER' }));
+        effectiveRole = 'END_USER';
+        dispatch(loginSuccess({ user: res.user, token: res.token, role: effectiveRole }));
       } else if (role === 'worker') {
         try {
           res = await authApi.loginWorker(form);
-          dispatch(loginSuccess({ user: res.worker_group, token: res.token, role: 'WORKER_GROUP' }));
+          effectiveRole = 'WORKER_GROUP';
+          dispatch(loginSuccess({ user: res.worker_group, token: res.token, role: effectiveRole }));
         } catch (workerErr) {
-          // If not in worker_groups, try users login (for individual WORKER accounts created by Admin)
+          // If not in worker_groups, try users login (for individual WORKER accounts created by Admin/Worker Group)
           try {
             res = await authApi.loginUser(form);
             if (res.user?.role === 'WORKER') {
-              dispatch(loginSuccess({ user: res.user, token: res.token, role: 'WORKER' }));
+              effectiveRole = 'WORKER';
+              dispatch(loginSuccess({ user: res.user, token: res.token, role: effectiveRole }));
             } else {
               throw workerErr;
             }
@@ -49,10 +55,19 @@ export default function LoginModal() {
         }
       } else {
         res = await authApi.loginAdmin(form);
-        dispatch(loginSuccess({ user: res.admin, token: res.token, role: 'ADMIN' }));
+        effectiveRole = 'ADMIN';
+        dispatch(loginSuccess({ user: res.admin, token: res.token, role: effectiveRole }));
       }
       dispatch(addToast({ type: 'success', message: `Welcome back, ${res.user?.name || res.worker_group?.name || res.admin?.name}!` }));
       dispatch(closeModal());
+
+      // Redirect to role-appropriate dashboard immediately after login
+      if (effectiveRole === 'ADMIN') {
+        navigate('/admin');
+      } else if (effectiveRole === 'WORKER_GROUP' || effectiveRole === 'WORKER') {
+        navigate('/worker');
+      }
+      // END_USER stays on the current page (no redirect needed)
     } catch (err) {
       if (err.data?.verification_required || err.message?.toLowerCase().includes('verify your email')) {
         dispatch(setPendingVerification({ email: form.email }));

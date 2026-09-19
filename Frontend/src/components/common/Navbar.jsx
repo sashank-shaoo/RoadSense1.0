@@ -1,4 +1,4 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { openModal } from '../../store/slices/uiSlice.js';
 import { logoutSuccess } from '../../store/slices/authSlice.js';
@@ -12,6 +12,7 @@ import styles from './Navbar.module.css';
 export default function Navbar() {
   const dispatch = useDispatch();
   const location = useLocation();
+  const navigate = useNavigate();
   const { isAuthenticated, user, role } = useSelector((s) => s.auth);
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -19,9 +20,15 @@ export default function Navbar() {
   const isActive = (path) => location.pathname === path;
 
   const handleLogout = async () => {
-    await authApi.logout(role);
+    try {
+      await authApi.logout(role);
+    } catch {
+      // ignore network errors
+    }
     dispatch(logoutSuccess());
     setProfileOpen(false);
+    setMenuOpen(false);
+    navigate('/');
   };
 
   const getRoleIcon = () => {
@@ -58,9 +65,12 @@ export default function Navbar() {
           <Link to="/reports" className={`${styles.navLink} ${isActive('/reports') ? styles.active : ''}`}>
             <FileText size={14} /> Reports
           </Link>
-          <Link to="/report" className={`${styles.navLink} ${isActive('/report') ? styles.active : ''}`}>
-            <AlertTriangle size={14} /> Report
-          </Link>
+          {/* Report submission is only for citizens */}
+          {(!role || role === 'END_USER') && (
+            <Link to="/report" className={`${styles.navLink} ${isActive('/report') ? styles.active : ''}`}>
+              <AlertTriangle size={14} /> Report
+            </Link>
+          )}
           {(role === 'WORKER_GROUP' || role === 'WORKER') && (
             <Link to="/worker" className={`${styles.navLink} ${isActive('/worker') ? styles.active : ''}`}>
               <Wrench size={14} /> Portal
@@ -94,7 +104,8 @@ export default function Navbar() {
                     {getRoleIcon()} {getRoleLabel()}
                   </span>
                 </div>
-                {user?.credit_points !== undefined && (
+                {/* Credit points are only for citizen accounts */}
+                {user?.credit_points !== undefined && (!role || role === 'END_USER') && (
                   <span className={styles.creditPill}>
                     <Star size={11} />
                     {user.credit_points}
@@ -136,7 +147,10 @@ export default function Navbar() {
           <Link to="/" className={styles.mobileLink} onClick={() => setMenuOpen(false)}>Home</Link>
           <Link to="/explore" className={styles.mobileLink} onClick={() => setMenuOpen(false)}>Explore Map</Link>
           <Link to="/reports" className={styles.mobileLink} onClick={() => setMenuOpen(false)}>All Reports</Link>
-          <Link to="/report" className={styles.mobileLink} onClick={() => setMenuOpen(false)}>Report Damage</Link>
+          {/* Report submission is only for citizens */}
+          {(!role || role === 'END_USER') && (
+            <Link to="/report" className={styles.mobileLink} onClick={() => setMenuOpen(false)}>Report Damage</Link>
+          )}
           {(role === 'WORKER_GROUP' || role === 'WORKER') && (
             <>
               <Link to="/worker" className={styles.mobileLink} onClick={() => setMenuOpen(false)}>Worker Portal</Link>

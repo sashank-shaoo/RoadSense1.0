@@ -17,6 +17,8 @@ import {
   UserCheck,
   Award,
   ChevronRight,
+  PlusCircle,
+  KeyRound,
 } from 'lucide-react';
 import styles from './WorkerProfilePage.module.css';
 
@@ -32,6 +34,11 @@ export default function WorkerProfilePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isAddingMember, setIsAddingMember] = useState(false);
   const [removingId, setRemovingId] = useState(null);
+
+  // Create new worker form state
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [newWorker, setNewWorker] = useState({ name: '', email: '', password: '', phone: '' });
+  const [isCreatingWorker, setIsCreatingWorker] = useState(false);
 
   const isGroup = role === 'WORKER_GROUP';
 
@@ -109,6 +116,35 @@ export default function WorkerProfilePage() {
     }
   };
 
+  // Create a brand-new worker member account and refresh available workers
+  const handleCreateWorker = async (e) => {
+    e.preventDefault();
+    const { name, email, password } = newWorker;
+    if (!name.trim() || !email.trim() || !password.trim()) {
+      dispatch(addToast({ type: 'warning', message: 'Name, email and password are required' }));
+      return;
+    }
+    setIsCreatingWorker(true);
+    try {
+      const res = await workerApi.createWorker({
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        password,
+        phone: newWorker.phone.trim() || undefined,
+      });
+      dispatch(addToast({ type: 'success', message: res?.message || `Worker account for ${name} created!` }));
+      setNewWorker({ name: '', email: '', password: '', phone: '' });
+      setShowCreateForm(false);
+      // Refresh available workers list so the new worker appears
+      const availRes = await workerApi.getAvailableWorkers();
+      if (availRes?.workers) setAvailableWorkers(availRes.workers);
+    } catch (err) {
+      dispatch(addToast({ type: 'error', message: err?.message || 'Failed to create worker account' }));
+    } finally {
+      setIsCreatingWorker(false);
+    }
+  };
+
   if (!isAuthenticated) {
     return (
       <div className={styles.loginRequired}>
@@ -182,7 +218,92 @@ export default function WorkerProfilePage() {
       {/* Crew Members Section (For Worker Groups) */}
       {isGroup ? (
         <div className={styles.membersSection}>
-          {/* Add Member Card */}
+          {/* Create New Worker Member Card */}
+          {isGroup && (
+            <div className={`card ${styles.addMemberCard}`} style={{ marginBottom: '1.5rem' }}>
+              <div className={styles.cardHeader}>
+                <div className={styles.cardHeaderIcon} style={{ background: 'rgba(129, 140, 248, 0.15)', color: '#818cf8' }}>
+                  <PlusCircle size={20} />
+                </div>
+                <div>
+                  <h3>Create New Worker Member</h3>
+                  <p className={styles.cardHeaderSub}>
+                    Register a brand-new individual worker account directly from your crew portal.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className={`btn btn-secondary btn-sm`}
+                  style={{ marginLeft: 'auto' }}
+                  onClick={() => setShowCreateForm((v) => !v)}
+                >
+                  {showCreateForm ? 'Cancel' : '+ New Worker'}
+                </button>
+              </div>
+
+              {showCreateForm && (
+                <form onSubmit={handleCreateWorker} className={styles.addMemberForm} style={{ flexDirection: 'column', gap: '0.75rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                    <div className="input-group" style={{ margin: 0 }}>
+                      <label className="input-label">Full Name *</label>
+                      <input
+                        className="input-field"
+                        type="text"
+                        placeholder="e.g. Ravi Kumar"
+                        value={newWorker.name}
+                        onChange={(e) => setNewWorker((p) => ({ ...p, name: e.target.value }))}
+                        required
+                      />
+                    </div>
+                    <div className="input-group" style={{ margin: 0 }}>
+                      <label className="input-label">Email Address *</label>
+                      <input
+                        className="input-field"
+                        type="email"
+                        placeholder="worker@example.com"
+                        value={newWorker.email}
+                        onChange={(e) => setNewWorker((p) => ({ ...p, email: e.target.value }))}
+                        required
+                      />
+                    </div>
+                    <div className="input-group" style={{ margin: 0 }}>
+                      <label className="input-label">Password *</label>
+                      <input
+                        className="input-field"
+                        type="password"
+                        placeholder="Min. 8 characters"
+                        value={newWorker.password}
+                        onChange={(e) => setNewWorker((p) => ({ ...p, password: e.target.value }))}
+                        required
+                        minLength={8}
+                      />
+                    </div>
+                    <div className="input-group" style={{ margin: 0 }}>
+                      <label className="input-label">Phone (optional)</label>
+                      <input
+                        className="input-field"
+                        type="tel"
+                        placeholder="+91 98765 43210"
+                        value={newWorker.phone}
+                        onChange={(e) => setNewWorker((p) => ({ ...p, phone: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                  <button
+                    type="submit"
+                    className="btn btn-primary"
+                    disabled={isCreatingWorker}
+                    style={{ alignSelf: 'flex-start' }}
+                  >
+                    <KeyRound size={15} />
+                    {isCreatingWorker ? 'Creating Account…' : 'Create Worker Account'}
+                  </button>
+                </form>
+              )}
+            </div>
+          )}
+
+          {/* Add Existing Member Card */}
           <div className={`card ${styles.addMemberCard}`}>
             <div className={styles.cardHeader}>
               <div className={styles.cardHeaderIcon}>

@@ -1,4 +1,5 @@
-import { Routes, Route } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import Navbar from './components/common/Navbar.jsx';
 import Toast from './components/common/Toast.jsx';
@@ -21,6 +22,47 @@ import WorkerPortalPage from './pages/WorkerPortalPage.jsx';
 import WorkerProfilePage from './pages/WorkerProfilePage.jsx';
 import AdminPortalPage from './pages/AdminPortalPage.jsx';
 
+/**
+ * RoleGuard — watches auth state and redirects workers/admins
+ * away from pages they shouldn't see on first load (e.g. from a persisted session),
+ * and ensures any logout redirects to the home page every time.
+ */
+function RoleGuard() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { isAuthenticated, role } = useSelector((s) => s.auth);
+  const prevAuthRef = useRef(isAuthenticated);
+
+  // Whenever a user logs out, redirect to home page every time
+  useEffect(() => {
+    if (prevAuthRef.current && !isAuthenticated) {
+      navigate('/', { replace: true });
+    }
+    prevAuthRef.current = isAuthenticated;
+  }, [isAuthenticated, navigate]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !role) return;
+
+    const path = location.pathname;
+
+    // Workers/Admins should not land on /report (citizen submit form)
+    if ((role === 'WORKER_GROUP' || role === 'WORKER' || role === 'ADMIN') && path === '/report') {
+      navigate('/', { replace: true });
+    }
+
+    // Workers/Admins should not land on /profile (citizen profile)
+    if ((role === 'WORKER_GROUP' || role === 'WORKER') && path === '/profile') {
+      navigate('/worker/profile', { replace: true });
+    }
+    if (role === 'ADMIN' && path === '/profile') {
+      navigate('/admin', { replace: true });
+    }
+  }, [isAuthenticated, role, location.pathname, navigate]);
+
+  return null;
+}
+
 export default function App() {
   const { activeModal } = useSelector((s) => s.ui);
 
@@ -28,6 +70,9 @@ export default function App() {
     <div className="app-shell">
       {/* Global Navbar */}
       <Navbar />
+
+      {/* Role-based route guard (handles persisted sessions) */}
+      <RoleGuard />
 
       {/* Route Views */}
       <main className="main-content">
@@ -57,3 +102,4 @@ export default function App() {
     </div>
   );
 }
+

@@ -11,6 +11,14 @@ export const workerApi = {
     return request('/workers/available-workers');
   },
 
+  // Create a new individual worker member account (Worker Group permission)
+  async createWorker(data) {
+    return request('/workers/create-worker', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
   // Add a worker member to the worker group
   async addMember(workerId) {
     return request('/workers/members', {
@@ -26,3 +34,4 @@ export const workerApi = {
     });
   },
 };
+
