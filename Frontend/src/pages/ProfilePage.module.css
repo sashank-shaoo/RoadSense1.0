@@ -43,14 +43,14 @@
   width: 64px;
   height: 64px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--color-cyan), #6366f1);
-  color: #fff;
+  background: linear-gradient(135deg, var(--color-cyan), #53535f);
+  color: #000000;
   font-weight: 800;
   font-size: 1.4rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 16px rgba(6, 182, 212, 0.3);
+  box-shadow: 0 4px 16px rgba(36, 37, 37, 0.3);
 }
 
 .nameRow {
