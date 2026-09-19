@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { openModal } from '../store/slices/uiSlice.js';
 import { setActiveReport } from '../store/slices/reportSlice.js';
 import { updateCreditPoints } from '../store/slices/authSlice.js';
@@ -22,6 +23,7 @@ import styles from './ProfilePage.module.css';
 
 export default function ProfilePage() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { user, isAuthenticated, role } = useSelector((s) => s.auth);
   const [myReports, setMyReports] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -94,7 +96,7 @@ export default function ProfilePage() {
 
   const handleReportClick = (report) => {
     dispatch(setActiveReport(report));
-    dispatch(openModal('reportDetail'));
+    navigate(`/reports/${report.id}`);
   };
 
   return (
@@ -177,7 +179,7 @@ export default function ProfilePage() {
       <div className={styles.historySection}>
         <div className={styles.sectionTitleRow}>
           <h2>My Submitted Reports</h2>
-          <button className="btn btn-primary btn-sm" onClick={() => dispatch(openModal('createReport'))}>
+          <button className="btn btn-primary btn-sm" onClick={() => navigate('/report')}>
             <AlertTriangle size={14} /> Submit New Report
           </button>
         </div>
@@ -188,7 +190,7 @@ export default function ProfilePage() {
           <div className={styles.empty}>
             <FileText size={36} />
             <p>You haven't submitted any road damage reports yet.</p>
-            <button className="btn btn-secondary btn-sm" onClick={() => dispatch(openModal('createReport'))}>
+            <button className="btn btn-secondary btn-sm" onClick={() => navigate('/report')}>
               Report First Incident (+50 pts)
             </button>
           </div>
@@ -229,8 +231,12 @@ export default function ProfilePage() {
 
                   <div className={styles.reportLocation}>
                     <MapPin size={12} />
-                    <span>
-                      {report.location?.latitude?.toFixed(4)}, {report.location?.longitude?.toFixed(4)}
+                    <span title={report.address || ''}>
+                      {report.address ? (report.address.length > 32 ? report.address.slice(0, 32) + '...' : report.address) : (
+                        report.location?.latitude 
+                          ? `${report.location.latitude.toFixed(4)}, ${report.location.longitude.toFixed(4)}` 
+                          : 'Location pinned'
+                      )}
                     </span>
                   </div>
 

@@ -19,9 +19,23 @@ export default function ReportDetailModal() {
 
   if (!report) return null;
 
+  // Safe parse raw_ai_response
+  let parsedAi = null;
+  if (typeof report.raw_ai_response === 'string') {
+    try {
+      parsedAi = JSON.parse(report.raw_ai_response);
+    } catch (e) {
+      console.warn('Could not parse raw_ai_response JSON', e);
+    }
+  } else if (typeof report.raw_ai_response === 'object' && report.raw_ai_response !== null) {
+    parsedAi = report.raw_ai_response;
+  }
+
   const level = getSeverityLevel(report);
   const color = getSeverityColor(level);
-  const detections = report.raw_ai_response?.detections || [];
+  const detections = parsedAi?.detections || report.detections || [];
+  const modelVersion = parsedAi?.model_version || report.model_version || 'RoadSense-YOLO-best.pt';
+  const detectionCount = report.detection_count ?? parsedAi?.count ?? detections.length;
 
   const handleClose = () => {
     dispatch(closeModal());
@@ -85,9 +99,7 @@ export default function ReportDetailModal() {
             )}
             <div className={styles.aiOverlay}>
               <span className={styles.aiBadge}><Cpu size={11} /> AI Analyzed</span>
-              {report.raw_ai_response?.model_version && (
-                <span className={styles.modelVersion}>{report.raw_ai_response.model_version}</span>
-              )}
+              <span className={styles.modelVersion}>{modelVersion}</span>
             </div>
           </div>
 
@@ -101,7 +113,7 @@ export default function ReportDetailModal() {
                 <span className={styles.metricLabel}>Damage Score</span>
               </div>
               <div className={styles.metric}>
-                <span className={styles.metricVal}>{report.detection_count || 0}</span>
+                <span className={styles.metricVal}>{detectionCount}</span>
                 <span className={styles.metricLabel}>Detections</span>
               </div>
               <div className={styles.metric}>

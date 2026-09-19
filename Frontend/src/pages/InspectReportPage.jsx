@@ -16,7 +16,8 @@ import {
   getStatusLabel, 
   getStatusColor, 
   formatRelativeTime, 
-  formatScore 
+  formatScore,
+  formatFileSize 
 } from '../utils/helpers.js';
 import { 
   ArrowLeft, 
@@ -140,14 +141,31 @@ export default function InspectReportPage() {
     );
   }
 
-  const level = getSeverityLevel(report);
+  // Parse raw_ai_response safely (JSON string from PostgreSQL or object)
+  let parsedAi = null;
+  if (typeof report.raw_ai_response === 'string') {
+    try {
+      parsedAi = JSON.parse(report.raw_ai_response);
+    } catch (e) {
+      console.warn('Failed to parse raw_ai_response JSON', e);
+    }
+  } else if (typeof report.raw_ai_response === 'object' && report.raw_ai_response !== null) {
+    parsedAi = report.raw_ai_response;
+  }
+
+  const detections = parsedAi?.detections || report.detections || [];
+  const modelVersion = parsedAi?.model_version || report.model_version || 'RoadSense-YOLO-best.pt';
+  const detectionCount = report.detection_count ?? parsedAi?.count ?? detections.length;
+  const damageScore = Number(report.damage_score ?? parsedAi?.damage_score ?? 0);
+  const highestSeverity = report.highest_severity || parsedAi?.highest_severity || 'MEDIUM';
+
+  const level = getSeverityLevel({ ...report, damage_score: damageScore, highest_severity: highestSeverity });
   const color = getSeverityColor(level);
   const statusColor = getStatusColor(report.status);
   const statusLabel = getStatusLabel(report.status);
-  const detections = report.raw_ai_response?.detections || report.detections || [];
-  
-  const lat = Number(report.location?.latitude ?? report.latitude ?? 20.2961);
-  const lng = Number(report.location?.longitude ?? report.longitude ?? 85.8245);
+
+  const lat = Number(report.location?.latitude ?? report.latitude ?? (Array.isArray(report.coordinates) ? report.coordinates[1] : 20.2961));
+  const lng = Number(report.location?.longitude ?? report.longitude ?? (Array.isArray(report.coordinates) ? report.coordinates[0] : 85.8245));
   const mapCenter = [lat, lng];
 
   return (
@@ -214,8 +232,21 @@ export default function InspectReportPage() {
                   <Cpu size={16} />
                   <span>NEURAL COMPUTER VISION INFERENCE</span>
                 </div>
-                <div className={styles.modelTag}>
-                  {report.raw_ai_response?.model_version || 'YOLOv11n-RDD-v1'}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <a
+                    href={report.image_url || report.media_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn btn-ghost btn-xs"
+                    title="View Raw High-Resolution Media"
+                    style={{ fontSize: '0.7rem', padding: '2px 8px', border: '1px solid var(--ink-black)' }}
+                  >
+                    <span>Raw Media</span>
+                    <ExternalLink size={11} />
+                  </a>
+                  <div className={styles.modelTag}>
+                    {modelVersion}
+                  </div>
                 </div>
               </div>
 
@@ -250,7 +281,7 @@ export default function InspectReportPage() {
               <div className={styles.panelHeader}>
                 <div className={styles.panelTitle}>
                   <AlertTriangle size={16} />
-                  <span>CLASSIFIED DEFECT BREAKDOWN ({detections.length})</span>
+                  <span>CLASSIFIED DEFECT BREAKDOWN ({detectionCount})</span>
                 </div>
               </div>
 
@@ -266,14 +297,18 @@ export default function InspectReportPage() {
                     <span>SEVERITY WEIGHT</span>
                   </div>
                   {detections.map((det, idx) => {
-                    const conf = ((det.confidence || 0) * 100).toFixed(1);
+                    const conf = ((Number(det.confidence) || 0) * 100).toFixed(1);
+                    const bboxStr = Array.isArray(det.bbox) ? `BBox: [${det.bbox.map(n => typeof n === 'number' ? n.toFixed(1) : n).join(', ')}]` : '';
                     return (
                       <div key={idx} className={styles.detRow}>
                         <div className={styles.detNameCol}>
                           <span className={styles.detDot} style={{ background: color }} />
-                          <span className={styles.detName}>
-                            {det.class?.replace(/_/g, ' ') || det.class_name || 'Road defect'}
-                          </span>
+                          <div className={styles.detTitleWrap}>
+                            <span className={styles.detName}>
+                              {det.class?.replace(/_/g, ' ') || det.class_name || 'Road defect'}
+                            </span>
+                            {bboxStr && <span className={styles.bboxBadge}>{bboxStr}</span>}
+                          </div>
                         </div>
                         <div className={styles.detConfCol}>
                           <div className={styles.confBarBg}>
@@ -285,7 +320,7 @@ export default function InspectReportPage() {
                           <span className={styles.confText}>{conf}%</span>
                         </div>
                         <div className={styles.detWeightCol}>
-                          <span className={styles.weightTag}>{det.severity_weight || 'PRIMARY'}</span>
+                          <span className={styles.weightTag}>{det.severity_weight || (highestSeverity || 'PRIMARY')}</span>
                         </div>
                       </div>
                     );
@@ -422,13 +457,59 @@ export default function InspectReportPage() {
                   </span>
                 </div>
                 <div className={styles.specRow}>
-                  <span className={styles.specLabel}>MUNICIPAL JURISDICTION</span>
-                  <span className={styles.specVal}>{report.zone || 'Zone 01 — Urban Central'}</span>
+                  <span className={styles.specLabel}>AI SEVERITY GRADE</span>
+                  <span className={styles.specVal} style={{ color, fontWeight: 700 }}>
+                    {highestSeverity} ({formatScore(damageScore, 2)} / 10.0)
+                  </span>
                 </div>
                 <div className={styles.specRow}>
-                  <span className={styles.specLabel}>FILE REFERENCE</span>
-                  <span className={styles.specValMono}>{report.original_filename || report.s3_object_key || 'media_capture'}</span>
+                  <span className={styles.specLabel}>INFERENCE ENGINE</span>
+                  <span className={styles.specValMono}>{modelVersion} ({detectionCount} defects)</span>
                 </div>
+                <div className={styles.specRow}>
+                  <span className={styles.specLabel}>FILE TELEMETRY</span>
+                  <span className={styles.specValMono} title={report.original_filename || ''}>
+                    {report.original_filename || 'media_capture'} {report.file_size_bytes ? `(${formatFileSize(report.file_size_bytes)})` : ''}
+                  </span>
+                </div>
+                {report.image_mime_type && (
+                  <div className={styles.specRow}>
+                    <span className={styles.specLabel}>MEDIA MIME TYPE</span>
+                    <span className={styles.specValMono}>{report.image_mime_type} ({report.media_type || 'image'})</span>
+                  </div>
+                )}
+                {report.s3_object_key && (
+                  <div className={styles.specRow}>
+                    <span className={styles.specLabel}>S3 STORAGE KEY</span>
+                    <span className={styles.specValMono} title={report.s3_object_key}>
+                      {report.s3_object_key.split('/').slice(-2).join('/')}
+                    </span>
+                  </div>
+                )}
+                {report.user_id && (
+                  <div className={styles.specRow}>
+                    <span className={styles.specLabel}>REPORTER ID</span>
+                    <span className={styles.specValMono}>#{report.user_id.slice(0, 8)}</span>
+                  </div>
+                )}
+                {report.assigned_worker_id && (
+                  <div className={styles.specRow}>
+                    <span className={styles.specLabel}>ASSIGNED WORKER</span>
+                    <span className={styles.specValMono}>#{report.assigned_worker_id.slice(0, 8)}</span>
+                  </div>
+                )}
+                {report.bidding_ends_at && (
+                  <div className={styles.specRow}>
+                    <span className={styles.specLabel}>BIDDING DEADLINE</span>
+                    <span className={styles.specVal}>{new Date(report.bidding_ends_at).toLocaleString()}</span>
+                  </div>
+                )}
+                {report.verification_ends_at && (
+                  <div className={styles.specRow}>
+                    <span className={styles.specLabel}>VERIFY DEADLINE</span>
+                    <span className={styles.specVal}>{new Date(report.verification_ends_at).toLocaleString()}</span>
+                  </div>
+                )}
                 <div className={styles.specRow}>
                   <span className={styles.specLabel}>TIME RECORDED</span>
                   <span className={styles.specVal}>

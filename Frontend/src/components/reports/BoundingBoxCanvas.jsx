@@ -33,33 +33,57 @@ export default function BoundingBoxCanvas({ imageUrl, detections = [], width = 6
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       detections.forEach((det) => {
-        const [bx, by, bw, bh] = det.bbox;
+        if (!Array.isArray(det.bbox) || det.bbox.length < 4) return;
+        let [b0, b1, b2, b3] = det.bbox.map(Number);
+
+        // Handle normalized coordinates (0.0 to 1.0)
+        if (b0 <= 1 && b1 <= 1 && b2 <= 1 && b3 <= 1 && (b2 > 0 || b3 > 0)) {
+          b0 *= img.naturalWidth;
+          b1 *= img.naturalHeight;
+          b2 *= img.naturalWidth;
+          b3 *= img.naturalHeight;
+        }
+
+        // YOLO model returns xyxy [x1, y1, x2, y2]
+        let bx, by, bw, bh;
+        if (b2 > b0 && b3 > b1) {
+          bx = b0;
+          by = b1;
+          bw = b2 - b0;
+          bh = b3 - b1;
+        } else {
+          bx = b0;
+          by = b1;
+          bw = b2;
+          bh = b3;
+        }
+
         const x = bx * scaleX;
         const y = by * scaleY;
         const w = bw * scaleX;
         const h = bh * scaleY;
         const color = getColor(det.class);
-        const confidence = ((det.confidence || 0) * 100).toFixed(0);
+        const confidence = ((Number(det.confidence) || 0) * 100).toFixed(0);
 
-        // Box shadow glow
+        // Box stroke and glow
         ctx.shadowColor = color;
-        ctx.shadowBlur = 8;
+        ctx.shadowBlur = 10;
         ctx.strokeStyle = color;
-        ctx.lineWidth = 2.5;
+        ctx.lineWidth = 3;
         ctx.strokeRect(x, y, w, h);
         ctx.shadowBlur = 0;
 
-        // Fill top badge
-        const label = `${det.class?.replace(/_/g, ' ')} ${confidence}%`;
-        ctx.font = '600 11px Inter, sans-serif';
-        const textW = ctx.measureText(label).width + 10;
-        const tagH = 20;
+        // Fill top label pill
+        const label = `${det.class?.replace(/_/g, ' ').toUpperCase()}  ${confidence}%`;
+        ctx.font = '700 12px "JetBrains Mono", Inter, sans-serif';
+        const textW = ctx.measureText(label).width + 12;
+        const tagH = 22;
         ctx.fillStyle = color;
-        ctx.fillRect(x, y - tagH, textW, tagH);
+        ctx.fillRect(x, Math.max(0, y - tagH), textW, tagH);
 
         // Label text
-        ctx.fillStyle = '#fff';
-        ctx.fillText(label, x + 5, y - 6);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(label, x + 6, Math.max(15, y - 6));
 
         // Corner accents
         const cs = 12;
@@ -76,11 +100,28 @@ export default function BoundingBoxCanvas({ imageUrl, detections = [], width = 6
       });
     };
 
+    const syncCanvasToImage = () => {
+      const canvas = canvasRef.current;
+      const img = imgRef.current;
+      if (canvas && img && img.offsetWidth > 0 && img.offsetHeight > 0) {
+        canvas.width = img.offsetWidth;
+        canvas.height = img.offsetHeight;
+        canvas.style.left = `${img.offsetLeft}px`;
+        canvas.style.top = `${img.offsetTop}px`;
+        canvas.style.width = `${img.offsetWidth}px`;
+        canvas.style.height = `${img.offsetHeight}px`;
+        drawBoxes();
+      }
+    };
+
     if (img.complete) {
-      drawBoxes();
+      syncCanvasToImage();
     } else {
-      img.onload = drawBoxes;
+      img.onload = syncCanvasToImage;
     }
+
+    window.addEventListener('resize', syncCanvasToImage);
+    return () => window.removeEventListener('resize', syncCanvasToImage);
   }, [detections, imageUrl]);
 
   return (
@@ -101,9 +142,13 @@ export default function BoundingBoxCanvas({ imageUrl, detections = [], width = 6
         onLoad={() => {
           const canvas = canvasRef.current;
           const img = imgRef.current;
-          if (canvas && img) {
+          if (canvas && img && img.offsetWidth > 0 && img.offsetHeight > 0) {
             canvas.width = img.offsetWidth;
             canvas.height = img.offsetHeight;
+            canvas.style.left = `${img.offsetLeft}px`;
+            canvas.style.top = `${img.offsetTop}px`;
+            canvas.style.width = `${img.offsetWidth}px`;
+            canvas.style.height = `${img.offsetHeight}px`;
           }
         }}
       />

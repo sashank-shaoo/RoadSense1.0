@@ -35,13 +35,27 @@ export const getSeverityLabel = (level) => {
   return labels[level] || 'Low';
 };
 
+export const formatFileSize = (bytes) => {
+  const num = Number(bytes);
+  if (isNaN(num) || num <= 0) return 'N/A';
+  if (num < 1024) return `${num} B`;
+  if (num < 1024 * 1024) return `${(num / 1024).toFixed(1)} KB`;
+  return `${(num / (1024 * 1024)).toFixed(1)} MB`;
+};
+
 export const getStatusLabel = (status) => {
   const map = {
-    notStarted: 'Not Started',
+    notStarted: 'Reported',
     onGoing: 'In Progress',
-    completed: 'Completed',
+    completed: 'Resolved',
+    BIDDING: 'Bidding Open',
+    ASSIGNED: 'Worker Assigned',
+    IN_PROGRESS: 'Work In Progress',
+    VERIFICATION: 'Under Verification',
+    ESCALATED: 'Escalated to Admin',
+    DELETED: 'Closed / Purged',
   };
-  return map[status] || status;
+  return map[status] || status || 'Reported';
 };
 
 export const getStatusColor = (status) => {
@@ -49,6 +63,12 @@ export const getStatusColor = (status) => {
     notStarted: '#94a3b8',
     onGoing: '#f59e0b',
     completed: '#10b981',
+    BIDDING: '#38bdf8',
+    ASSIGNED: '#818cf8',
+    IN_PROGRESS: '#f59e0b',
+    VERIFICATION: '#a855f7',
+    ESCALATED: '#ef4444',
+    DELETED: '#64748b',
   };
   return map[status] || '#94a3b8';
 };

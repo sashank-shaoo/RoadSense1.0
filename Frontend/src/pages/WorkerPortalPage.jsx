@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { openModal, addToast } from '../store/slices/uiSlice.js';
 import { setActiveReport } from '../store/slices/reportSlice.js';
 import { reportApi } from '../api/reportApi.js';
@@ -20,6 +21,7 @@ import styles from './WorkerPortalPage.module.css';
 
 export default function WorkerPortalPage() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { user, isAuthenticated, role } = useSelector((s) => s.auth);
   const [reports, setReports] = useState([]);
   const [filterStatus, setFilterStatus] = useState('all');
@@ -158,7 +160,7 @@ export default function WorkerPortalPage() {
                   <div className={styles.orderBody}>
                     <div className={styles.orderImageThumb} onClick={() => {
                       dispatch(setActiveReport(report));
-                      dispatch(openModal('reportDetail'));
+                      navigate(`/reports/${report.id}`);
                     }}>
                       {report.media_type === 'video' || report.video_url ? (
                         <video 

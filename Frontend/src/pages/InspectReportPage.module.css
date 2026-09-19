@@ -188,7 +188,7 @@
 /* Grid Layout */
 .contentGrid {
   display: grid;
-  grid-template-columns: 1.3fr 1fr;
+  grid-template-columns: 1.45fr 1fr;
   gap: 28px;
   align-items: start;
 }
@@ -336,10 +336,28 @@
   flex-shrink: 0;
 }
 
+.detTitleWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
 .detName {
   font-weight: 700;
   text-transform: capitalize;
   color: var(--ink-black);
+}
+
+.bboxBadge {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--ink-muted);
+  background: var(--bg-surface-2);
+  border: 1px solid var(--gray-rule);
+  padding: 1px 5px;
+  border-radius: 3px;
+  display: inline-block;
+  width: fit-content;
 }
 
 .detConfCol {
@@ -437,11 +455,11 @@
 }
 
 .geoReadout {
-  padding: 12px 20px;
+  padding: 14px 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 16px;
   background: var(--bg-surface-2);
   border-top: 1.5px solid var(--gray-rule);
   flex-wrap: wrap;
@@ -450,18 +468,20 @@
 .geoItem {
   display: flex;
   flex-direction: column;
+  gap: 3px;
 }
 
 .geoLabel {
   font-family: var(--font-mono);
-  font-size: 0.58rem;
+  font-size: 0.62rem;
   font-weight: 700;
   color: var(--ink-muted);
+  letter-spacing: 0.05em;
 }
 
 .geoVal {
   font-family: var(--font-mono);
-  font-size: 0.82rem;
+  font-size: 0.88rem;
   font-weight: 700;
   color: var(--ink-black);
 }
@@ -469,12 +489,23 @@
 .extMapLink {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   font-family: var(--font-mono);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 700;
   color: var(--ink-black);
-  text-decoration: underline;
+  background: var(--bg-surface);
+  border: 1.5px solid var(--ink-black);
+  padding: 5px 12px;
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  box-shadow: 2px 2px 0 var(--ink-black);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.extMapLink:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 var(--ink-black);
 }
 
 /* Telemetry list */

@@ -28,9 +28,9 @@ export default function AdminPortalPage() {
   const [isLoading, setIsLoading] = useState(false);
 
   // New Worker Group form state
-  const [newGroupCode, setNewGroupCode] = useState('');
-  const [newGroupLeader, setNewGroupLeader] = useState('');
-  const [newGroupZone, setNewGroupZone] = useState('');
+  const [workerName, setWorkerName] = useState('');
+  const [workerEmail, setWorkerEmail] = useState('');
+  const [workerPassword, setWorkerPassword] = useState('');
   const [isSubmittingGroup, setIsSubmittingGroup] = useState(false);
 
   const loadAdminData = async () => {
@@ -38,12 +38,16 @@ export default function AdminPortalPage() {
     try {
       const [usersRes, groupsRes, reportsRes] = await Promise.all([
         adminApi.getUsers().catch(() => ({ users: [] })),
-        adminApi.getWorkerGroups().catch(() => ({ workerGroups: [] })),
+        adminApi.getWorkerGroups().catch(() => ({ worker_groups: [] })),
         reportApi.getAllReports().catch(() => ({ reports: [] })),
       ]);
 
       if (usersRes?.users) setUsers(usersRes.users);
-      if (groupsRes?.workerGroups) setWorkerGroups(groupsRes.workerGroups);
+      if (groupsRes?.worker_groups) {
+        setWorkerGroups(groupsRes.worker_groups);
+      } else if (groupsRes?.workerGroups) {
+        setWorkerGroups(groupsRes.workerGroups);
+      }
       if (reportsRes?.reports) setReports(reportsRes.reports);
     } catch (err) {
       console.error(err);
@@ -58,36 +62,42 @@ export default function AdminPortalPage() {
 
   const handleCreateWorkerGroup = async (e) => {
     e.preventDefault();
-    if (!newGroupCode.trim()) return;
+    if (!workerName.trim() || !workerEmail.trim() || !workerPassword.trim()) {
+      dispatch(addToast({
+        type: 'warning',
+        message: 'Name, email, and password are required',
+      }));
+      return;
+    }
 
     setIsSubmittingGroup(true);
     try {
-      const created = await adminApi.createWorkerGroup({
-        group_code: newGroupCode,
-        leader_name: newGroupLeader,
-        assigned_zone: newGroupZone || 'Central Municipal Sector',
+      const res = await adminApi.createWorkerGroup({
+        name: workerName.trim(),
+        email: workerEmail.trim(),
+        password: workerPassword,
       });
 
-      setWorkerGroups((prev) => [...prev, created.group || {
+      const newGroup = res.worker_group || res.worker || {
         id: `wg_${Date.now()}`,
-        group_code: newGroupCode,
-        leader_name: newGroupLeader,
-        assigned_zone: newGroupZone || 'Central Municipal Sector',
-        active_tasks: 0,
-      }]);
+        name: workerName.trim(),
+        email: workerEmail.trim(),
+        role: 'WORKER_GROUP',
+      };
 
-      setNewGroupCode('');
-      setNewGroupLeader('');
-      setNewGroupZone('');
+      setWorkerGroups((prev) => [...prev, newGroup]);
+      setWorkerName('');
+      setWorkerEmail('');
+      setWorkerPassword('');
 
       dispatch(addToast({
         type: 'success',
-        message: `Worker group ${newGroupCode} provisioned successfully!`,
+        message: `Worker account for ${workerName} created successfully!`,
       }));
     } catch (err) {
       dispatch(addToast({
         type: 'error',
-        message: 'Failed to create worker group',
+        message: err.message || 'Failed to create worker account',
       }));
     } finally {
       setIsSubmittingGroup(false);
@@ -275,64 +285,73 @@ export default function AdminPortalPage() {
         <div className={styles.crewsTab}>
           {/* Create New Group Form */}
           <div className={`card ${styles.createCrewCard}`}>
-            <h3>Provision New Maintenance Crew</h3>
-            <p className={styles.formSub}>Assign municipal worker teams to designated smart city sectors.</p>
+            <h3>Provision New Maintenance Worker / Crew</h3>
+            <p className={styles.formSub}>Create a worker account with email and password so they can log in to the Worker Portal and bid on road repairs.</p>
             <form onSubmit={handleCreateWorkerGroup} className={styles.crewForm}>
               <div className={styles.formRow}>
                 <div className={styles.formGroup}>
-                  <label>Group Code</label>
+                  <label>Team Leader Name</label>
                   <input 
                     type="text" 
-                    placeholder="e.g. WG-SECTOR-09" 
-                    value={newGroupCode} 
-                    onChange={(e) => setNewGroupCode(e.target.value)}
+                    placeholder="e.g. Rudra Pratap Jena" 
+                    value={workerName} 
+                    onChange={(e) => setWorkerName(e.target.value)}
                     required
                   />
                 </div>
                 <div className={styles.formGroup}>
-                  <label>Crew Leader Name</label>
+                  <label>Worker Email</label>
                   <input 
-                    type="text" 
-                    placeholder="e.g. Inspector R. Sharma" 
-                    value={newGroupLeader} 
-                    onChange={(e) => setNewGroupLeader(e.target.value)}
+                    type="email" 
+                    placeholder="e.g. worker.rudra@roadsense.com" 
+                    value={workerEmail} 
+                    onChange={(e) => setWorkerEmail(e.target.value)}
                     required
                   />
                 </div>
                 <div className={styles.formGroup}>
-                  <label>Assigned Zone</label>
+                  <label>Temporary Password</label>
                   <input 
-                    type="text" 
-                    placeholder="e.g. North Ring Road Zone 4" 
-                    value={newGroupZone} 
-                    onChange={(e) => setNewGroupZone(e.target.value)}
+                    type="password" 
+                    placeholder="Min 6 characters" 
+                    value={workerPassword} 
+                    onChange={(e) => setWorkerPassword(e.target.value)}
+                    required
+                    minLength={6}
                   />
                 </div>
               </div>
 
               <button type="submit" className="btn btn-primary" disabled={isSubmittingGroup}>
-                <Plus size={16} /> Provision Crew Unit
+                <Plus size={16} /> {isSubmittingGroup ? 'Creating Worker...' : 'Create Worker Account'}
               </button>
             </form>
           </div>
 
           {/* Existing Crews Grid */}
           <div className={styles.crewsGrid}>
-            {workerGroups.map((group) => (
-              <div key={group.id} className={`card ${styles.crewCard}`}>
-                <div className={styles.crewCardTop}>
-                  <HardHat size={24} className={styles.hardHatIcon} />
-                  <span className={styles.tasksActive}>
-                    {group.active_tasks || 0} active work orders
-                  </span>
-                </div>
-                <h4 className={styles.groupCode}>{group.group_code}</h4>
-                <p className={styles.crewLeader}>Lead: {group.leader_name || 'Unassigned'}</p>
-                <div className={styles.crewZone}>
-                  <span>Zone:</span> {group.assigned_zone || 'Metropolitan Core'}
-                </div>
+            {workerGroups.length === 0 ? (
+              <div className={styles.emptyCrews}>
+                <HardHat size={32} />
+                <p>No maintenance workers or crews provisioned yet.</p>
               </div>
-            ))}
+            ) : (
+              workerGroups.map((group) => (
+                <div key={group.id} className={`card ${styles.crewCard}`}>
+                  <div className={styles.crewCardTop}>
+                    <HardHat size={24} className={styles.hardHatIcon} />
+                    <span className={styles.tasksActive}>
+                      {group.role || 'WORKER_GROUP'}
+                    </span>
+                  </div>
+                  <h4 className={styles.groupCode}>{group.name || group.group_code || 'Worker Crew'}</h4>
+                  <p className={styles.crewLeader}>{group.email || 'No email registered'}</p>
+                  <div className={styles.crewZone}>
+                    <span>ID:</span> #{group.id ? group.id.slice(0, 8) : 'N/A'}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       )}

@@ -19,7 +19,6 @@ import {
   getReportVotes,
   requireEndUser,
 } from "../controllers/Verification.controller.js";
-import { requireAdmin } from "../controllers/Admin.controller.js";
 import { authenticate } from "../middlewares/auth.middleware.js";
 
 const reportRoutes = async (fastify) => {
